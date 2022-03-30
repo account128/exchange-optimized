@@ -3,17 +3,17 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/math/SafeMathUpgradeable.sol";
-import "@rarible/lib-asset/contracts/LibAsset.sol";
-import "@rarible/royalties/contracts/IRoyaltiesProvider.sol";
-import "@rarible/lazy-mint/contracts/erc-721/LibERC721LazyMint.sol";
-import "@rarible/lazy-mint/contracts/erc-1155/LibERC1155LazyMint.sol";
+import "./IERC721Upgradeable.sol";
+import "./SafeMathUpgradeable.sol";
+import "./LibAsset.sol";
+import "./IRoyaltiesProvider.sol";
+import "./LibERC721LazyMint.sol";
+import "./LibERC1155LazyMint.sol";
 import "./LibFill.sol";
 import "./LibFeeSide.sol";
 import "./ITransferManager.sol";
 import "./TransferExecutor.sol";
-import "./lib/BpLibrary.sol";
+import "./BpLibrary.sol";
 
 abstract contract RaribleTransferManager is
   OwnableUpgradeable,

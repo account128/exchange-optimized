@@ -5,7 +5,7 @@ pragma abicoder v2;
 
 import "./ExchangeV2Core.sol";
 import "./RaribleTransferManager.sol";
-import "@rarible/royalties/contracts/IRoyaltiesProvider.sol";
+import "./IRoyaltiesProvider.sol";
 
 contract ExchangeV2 is ExchangeV2Core, RaribleTransferManager {
   function __ExchangeV2_init(

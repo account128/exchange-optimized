@@ -9,7 +9,7 @@ import "./OrderValidator.sol";
 import "./AssetMatcher.sol";
 import "./TransferExecutor.sol";
 import "./ITransferManager.sol";
-import "./lib/LibTransfer.sol";
+import "./LibTransfer.sol";
 
 abstract contract ExchangeV2Core is
   Initializable,

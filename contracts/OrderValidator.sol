@@ -2,12 +2,12 @@
 
 pragma solidity 0.7.6;
 
-import "./interfaces/IERC1271.sol";
+import "./IERC1271.sol";
 import "./LibOrder.sol";
-import "@rarible/libraries/contracts/LibSignature.sol";
-import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/drafts/EIP712Upgradeable.sol";
+import "./LibSignature.sol";
+import "./AddressUpgradeable.sol";
+import "./ContextUpgradeable.sol";
+import "./EIP712Upgradeable.sol";
 
 abstract contract OrderValidator is
   Initializable,

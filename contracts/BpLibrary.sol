@@ -2,7 +2,7 @@
 
 pragma solidity 0.7.6;
 
-import "@openzeppelin/contracts-upgradeable/math/SafeMathUpgradeable.sol";
+import "./SafeMathUpgradeable.sol";
 
 library BpLibrary {
     using SafeMathUpgradeable for uint;
