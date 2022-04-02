@@ -10,6 +10,7 @@ import "./AssetMatcher.sol";
 import "./TransferExecutor.sol";
 import "./ITransferManager.sol";
 import "./LibTransfer.sol";
+import "hardhat/console.sol";
 
 abstract contract ExchangeV2Core is
   Initializable,
@@ -22,18 +23,18 @@ abstract contract ExchangeV2Core is
   using SafeMathUpgradeable for uint256;
   using LibTransfer for address;
 
-  uint256 private constant UINT256_MAX = 2**256 - 1;
+  //uint256 private constant UINT256_MAX = 2**256 - 1;
 
   //state of the orders
-  mapping(bytes32 => uint256) public fills;
+  //mapping(bytes32 => uint256) public fills;
 
   //events
-  event Cancel(
-    bytes32 hash,
-    address maker,
-    LibAsset.AssetType makeAssetType,
-    LibAsset.AssetType takeAssetType
-  );
+  // event Cancel(
+  //   bytes32 hash,
+  //   address maker,
+  //   LibAsset.AssetType makeAssetType,
+  //   LibAsset.AssetType takeAssetType
+  // );
   event Match(
     bytes32 leftHash,
     bytes32 rightHash,
@@ -45,18 +46,18 @@ abstract contract ExchangeV2Core is
     LibAsset.AssetType rightAsset
   );
 
-  function cancel(LibOrder.Order memory order) external {
-    require(_msgSender() == order.maker, "not a maker");
-    require(order.salt != 0, "0 salt can't be used");
-    bytes32 orderKeyHash = LibOrder.hashKey(order);
-    fills[orderKeyHash] = UINT256_MAX;
-    emit Cancel(
-      orderKeyHash,
-      order.maker,
-      order.makeAsset.assetType,
-      order.takeAsset.assetType
-    );
-  }
+  // function cancel(LibOrder.Order memory order) external {
+  //   require(_msgSender() == order.maker, "not a maker");
+  //   require(order.salt != 0, "0 salt can't be used");
+  //   bytes32 orderKeyHash = LibOrder.hashKey(order);
+  //   fills[orderKeyHash] = UINT256_MAX;
+  //   emit Cancel(
+  //     orderKeyHash,
+  //     order.maker,
+  //     order.makeAsset.assetType,
+  //     order.takeAsset.assetType
+  //   );
+  // }
 
   function matchOrders(
     LibOrder.Order memory orderLeft,
@@ -64,7 +65,9 @@ abstract contract ExchangeV2Core is
     LibOrder.Order memory orderRight,
     bytes memory signatureRight
   ) external payable {
+    console.log("validating left");
     validateFull(orderLeft, signatureLeft);
+    console.log("validating left");
     validateFull(orderRight, signatureRight);
     if (orderLeft.taker != address(0)) {
       require(
@@ -78,6 +81,7 @@ abstract contract ExchangeV2Core is
         "rightOrder.taker verification failed"
       );
     }
+    console.log("match and transfer");
     matchAndTransfer(orderLeft, orderRight);
   }
 
@@ -106,6 +110,8 @@ abstract contract ExchangeV2Core is
       rightOrderData
     );
 
+    console.log("do transfers");
+
     (uint256 totalMakeValue, uint256 totalTakeValue) = doTransfers(
       makeMatch,
       takeMatch,
@@ -127,16 +133,17 @@ abstract contract ExchangeV2Core is
         address(msg.sender).transferEth(msg.value.sub(totalTakeValue));
       }
     }
-    emit Match(
-      leftOrderKeyHash,
-      rightOrderKeyHash,
-      orderLeft.maker,
-      orderRight.maker,
-      newFill.rightValue,
-      newFill.leftValue,
-      makeMatch,
-      takeMatch
-    );
+    // console.log("emit match");
+    // emit Match(
+    //   leftOrderKeyHash,
+    //   rightOrderKeyHash,
+    //   orderLeft.maker,
+    //   orderRight.maker,
+    //   newFill.rightValue,
+    //   newFill.leftValue,
+    //   makeMatch,
+    //   takeMatch
+    // );
   }
 
   function getFillSetNew(
@@ -147,8 +154,8 @@ abstract contract ExchangeV2Core is
     LibOrderDataV2.DataV2 memory leftOrderData,
     LibOrderDataV2.DataV2 memory rightOrderData
   ) internal returns (LibFill.FillResult memory) {
-    uint256 leftOrderFill = getOrderFill(orderLeft, leftOrderKeyHash);
-    uint256 rightOrderFill = getOrderFill(orderRight, rightOrderKeyHash);
+    uint256 leftOrderFill = 0;//getOrderFill(orderLeft, leftOrderKeyHash);
+    uint256 rightOrderFill = 0;//getOrderFill(orderRight, rightOrderKeyHash);
     LibFill.FillResult memory newFill = LibFill.fillOrder(
       orderLeft,
       orderRight,
@@ -160,35 +167,35 @@ abstract contract ExchangeV2Core is
 
     require(newFill.rightValue > 0 && newFill.leftValue > 0, "nothing to fill");
 
-    if (orderLeft.salt != 0) {
-      if (leftOrderData.isMakeFill) {
-        fills[leftOrderKeyHash] = leftOrderFill.add(newFill.leftValue);
-      } else {
-        fills[leftOrderKeyHash] = leftOrderFill.add(newFill.rightValue);
-      }
-    }
+    // if (orderLeft.salt != 0) {
+    //   if (leftOrderData.isMakeFill) {
+    //     fills[leftOrderKeyHash] = leftOrderFill.add(newFill.leftValue);
+    //   } else {
+    //     fills[leftOrderKeyHash] = leftOrderFill.add(newFill.rightValue);
+    //   }
+    // }
 
-    if (orderRight.salt != 0) {
-      if (rightOrderData.isMakeFill) {
-        fills[rightOrderKeyHash] = rightOrderFill.add(newFill.rightValue);
-      } else {
-        fills[rightOrderKeyHash] = rightOrderFill.add(newFill.leftValue);
-      }
-    }
+    // if (orderRight.salt != 0) {
+    //   if (rightOrderData.isMakeFill) {
+    //     fills[rightOrderKeyHash] = rightOrderFill.add(newFill.rightValue);
+    //   } else {
+    //     fills[rightOrderKeyHash] = rightOrderFill.add(newFill.leftValue);
+    //   }
+    // }
     return newFill;
   }
 
-  function getOrderFill(LibOrder.Order memory order, bytes32 hash)
-    internal
-    view
-    returns (uint256 fill)
-  {
-    if (order.salt == 0) {
-      fill = 0;
-    } else {
-      fill = fills[hash];
-    }
-  }
+  // function getOrderFill(LibOrder.Order memory order, bytes32 hash)
+  //   internal
+  //   view
+  //   returns (uint256 fill)
+  // {
+  //   if (order.salt == 0) {
+  //     fill = 0;
+  //   } else {
+  //     fill = fills[hash];
+  //   }
+  // }
 
   function matchAssets(
     LibOrder.Order memory orderLeft,

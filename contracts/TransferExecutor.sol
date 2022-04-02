@@ -36,12 +36,19 @@ abstract contract TransferExecutor is Initializable, OwnableUpgradeable, ITransf
         bytes4 transferDirection,
         bytes4 transferType
     ) internal override {
+        console.log("TRANSFERING");
         if (asset.assetType.assetClass == LibAsset.ETH_ASSET_CLASS) {
+            console.log(from);
+            console.log(to);
+            console.log(asset.value);
             to.transferEth(asset.value);
         } else if (asset.assetType.assetClass == LibAsset.ERC20_ASSET_CLASS) {
             (address token) = abi.decode(asset.assetType.data, (address));
             IERC20TransferProxy(proxies[LibAsset.ERC20_ASSET_CLASS]).erc20safeTransferFrom(IERC20Upgradeable(token), from, to, asset.value);
         } else if (asset.assetType.assetClass == LibAsset.ERC721_ASSET_CLASS) {
+            console.log(from);
+            console.log(to);
+            console.log(asset.value);
             (address token, uint tokenId) = abi.decode(asset.assetType.data, (address, uint256));
             require(asset.value == 1, "erc721 value error");
             INftTransferProxy(proxies[LibAsset.ERC721_ASSET_CLASS]).erc721safeTransferFrom(IERC721Upgradeable(token), from, to, tokenId);
@@ -51,7 +58,7 @@ abstract contract TransferExecutor is Initializable, OwnableUpgradeable, ITransf
         } else {
             ITransferProxy(proxies[asset.assetType.assetClass]).transfer(asset, from, to);
         }
-        emit Transfer(asset, from, to, transferDirection, transferType);
+        //emit Transfer(asset, from, to, transferDirection, transferType);
     }
 
     uint256[49] private __gap;

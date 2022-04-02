@@ -6,6 +6,7 @@ pragma abicoder v2;
 import "./ExchangeV2Core.sol";
 import "./RaribleTransferManager.sol";
 import "./IRoyaltiesProvider.sol";
+import "hardhat/console.sol";
 
 contract ExchangeV2 is ExchangeV2Core, RaribleTransferManager {
   function __ExchangeV2_init(
@@ -15,6 +16,7 @@ contract ExchangeV2 is ExchangeV2Core, RaribleTransferManager {
     address newDefaultFeeReceiver,
     IRoyaltiesProvider newRoyaltiesProvider
   ) external initializer {
+    console.log("this got called");
     __Context_init_unchained();
     __Ownable_init_unchained();
     __TransferExecutor_init_unchained(_transferProxy, _erc20TransferProxy);
@@ -23,6 +25,5 @@ contract ExchangeV2 is ExchangeV2Core, RaribleTransferManager {
       newDefaultFeeReceiver,
       newRoyaltiesProvider
     );
-    __OrderValidator_init_unchained();
   }
 }

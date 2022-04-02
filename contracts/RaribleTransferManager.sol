@@ -26,7 +26,7 @@ abstract contract RaribleTransferManager is
   IRoyaltiesProvider public royaltiesRegistry;
 
   address public defaultFeeReceiver;
-  mapping(address => address) public feeReceivers;
+  //mapping(address => address) public feeReceivers;
 
   function __RaribleTransferManager_init_unchained(
     uint256 newProtocolFee,
@@ -56,15 +56,15 @@ abstract contract RaribleTransferManager is
     defaultFeeReceiver = newDefaultFeeReceiver;
   }
 
-  function setFeeReceiver(address token, address wallet) external onlyOwner {
-    feeReceivers[token] = wallet;
-  }
+  // function setFeeReceiver(address token, address wallet) external onlyOwner {
+  //   feeReceivers[token] = wallet;
+  // }
 
   function getFeeReceiver(address token) internal view returns (address) {
-    address wallet = feeReceivers[token];
-    if (wallet != address(0)) {
-      return wallet;
-    }
+    // address wallet = feeReceivers[token];
+    // if (wallet != address(0)) {
+    //   return wallet;
+    // }
     return defaultFeeReceiver;
   }
 
@@ -100,7 +100,9 @@ abstract contract RaribleTransferManager is
         leftOrderData.payouts,
         TO_MAKER
       );
-    } else if (feeSide == LibFeeSide.FeeSide.TAKE) {
+    }
+     if (feeSide == LibFeeSide.FeeSide.TAKE) {
+      console.log("doing this transaction");
       totalTakeValue = doTransfersWithFees(
         fill.rightValue,
         rightOrder.maker,
@@ -146,9 +148,10 @@ abstract contract RaribleTransferManager is
   ) internal returns (uint256 totalAmount) {
     totalAmount = calculateTotalAmount(
       amount,
-      protocolFee,
+      125,//protocolFee,
       dataCalculate.originFees
     );
+    console.log(totalAmount, amount);
     uint256 rest = transferProtocolFee(
       totalAmount,
       amount,
@@ -198,11 +201,13 @@ abstract contract RaribleTransferManager is
     LibAsset.AssetType memory matchCalculate,
     bytes4 transferDirection
   ) internal returns (uint256) {
+    //(uint256 rest, uint256 fee) = (totalAmount, 125);
     (uint256 rest, uint256 fee) = subFeeInBp(
       totalAmount,
       amount,
-      protocolFee.mul(2)
+      250//protocolFee.mul(2)
     );
+    //console.log("rest, fee",rest, fee);
     if (fee > 0) {
       address tokenAddress = address(0);
       if (matchCalculate.assetClass == LibAsset.ERC20_ASSET_CLASS) {
@@ -262,6 +267,7 @@ abstract contract RaribleTransferManager is
         (address, uint256)
       );
 
+      console.log("getting royalties");
       return royaltiesRegistry.getRoyalties(token, tokenId);
     } else if (
       matchNft.assetClass == LibERC1155LazyMint.ERC1155_LAZY_ASSET_CLASS
