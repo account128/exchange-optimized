@@ -101,14 +101,16 @@ abstract contract ExchangeV2Core is
       orderRight
     );
 
-    LibFill.FillResult memory newFill = getFillSetNew(
-      orderLeft,
-      orderRight,
-      leftOrderKeyHash,
-      rightOrderKeyHash,
-      leftOrderData,
-      rightOrderData
-    );
+    LibFill.FillResult memory newFill = LibFill.FillResult(1,10000);//getFillSetNew(
+    //   orderLeft,
+    //   orderRight,
+    //   leftOrderKeyHash,
+    //   rightOrderKeyHash,
+    //   leftOrderData,
+    //   rightOrderData
+    // );
+
+    console.log("left, right fill", newFill.leftValue, newFill.rightValue);
 
     console.log("do transfers");
 
