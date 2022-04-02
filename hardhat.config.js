@@ -22,16 +22,38 @@ task("accounts", "Prints the list of accounts", async(taskArgs, hre) => {
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
-    solidity: "0.7.6",
+    solidity: {
+        compilers: [{
+                version: '0.7.6',
+                settings: {
+                    optimizer: {
+                        enabled: true,
+                        runs: 800,
+                    },
+                },
+
+            },
+            {
+                version: "0.8.2",
+                settings: {
+                    optimizer: {
+                        enabled: true,
+                        runs: 800,
+                    },
+                },
+            }
+        ],
+    },
     networks: {
-        ropsten: {
-            url: process.env.ROPSTEN_URL || "",
-            accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+        rinkeby: {
+            url: process.env.INFURA_URL || "",
+            accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY, process.env.PRIVATE_KEY2] : [],
         },
     },
     gasReporter: {
-        enabled: process.env.REPORT_GAS !== undefined,
-        currency: "USD",
+        currency: 'USD',
+        gasPrice: 30,
+        showTimeSpent: true,
     },
     etherscan: {
         apiKey: process.env.ETHERSCAN_API_KEY,
@@ -39,3 +61,4 @@ module.exports = {
 };
 
 require("hardhat-gas-reporter");
+require("@nomiclabs/hardhat-web3");
