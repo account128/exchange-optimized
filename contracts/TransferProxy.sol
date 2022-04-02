@@ -2,26 +2,20 @@
 
 pragma solidity >=0.6.9 <0.8.0;
 
-import "./OwnableUpgradeable.sol";
+import "./OperatorRole.sol";
+import "./INftTransferProxy.sol";
 
-contract OperatorRole is OwnableUpgradeable {
-    mapping (address => bool) operators;
+contract TransferProxy is INftTransferProxy, Initializable, OperatorRole {
 
-    function __OperatorRole_init() external initializer {
-        __Context_init_unchained();
-        __Ownable_init_unchained();
+    function __TransferProxy_init() external initializer {
+        __Ownable_init();
     }
 
-    function addOperator(address operator) external onlyOwner {
-        operators[operator] = true;
+    function erc721safeTransferFrom(IERC721Upgradeable token, address from, address to, uint256 tokenId) override external onlyOperator {
+        token.safeTransferFrom(from, to, tokenId);
     }
 
-    function removeOperator(address operator) external onlyOwner {
-        operators[operator] = false;
-    }
-
-    modifier onlyOperator() {
-        require(operators[_msgSender()], "OperatorRole: caller is not the operator");
-        _;
+    function erc1155safeTransferFrom(IERC1155Upgradeable token, address from, address to, uint256 id, uint256 value, bytes calldata data) override external onlyOperator {
+        token.safeTransferFrom(from, to, id, value, data);
     }
 }
