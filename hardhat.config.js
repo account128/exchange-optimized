@@ -34,7 +34,16 @@ module.exports = {
 
             },
             {
-                version: "0.8.2",
+                version: "0.8.2", // for erc721
+                settings: {
+                    optimizer: {
+                        enabled: true,
+                        runs: 200,
+                    },
+                },
+            },
+            {
+                version: "0.4.19", // for weth
                 settings: {
                     optimizer: {
                         enabled: true,

@@ -2,7 +2,6 @@
 
 pragma solidity >=0.6.2 <0.8.0;
 pragma abicoder v2;
-import "hardhat/console.sol";
 
 import "./IRoyaltiesProvider.sol";
 import "./LibRoyaltiesV2.sol";
@@ -136,17 +135,6 @@ contract RoyaltiesRegistry is IRoyaltiesProvider, OwnableUpgradeable {
 
   /// @dev checks if msg.sender is owner of this contract or owner of the token contract
   function checkOwner(address token) internal view {
-    console.log("owner");
-    console.log(owner());
-    console.log("message sender");
-    console.log(_msgSender());
-
-    console.log("token");
-    console.log(token);
-
-    console.log("ownable upgradeable");
-    console.log(OwnableUpgradeable(token).owner());
-
     if (
       (owner() != _msgSender()) &&
       (OwnableUpgradeable(token).owner() != _msgSender())
@@ -333,4 +321,4 @@ contract RoyaltiesRegistry is IRoyaltiesProvider, OwnableUpgradeable {
   }
 
   uint256[46] private __gap;
-}
+} 

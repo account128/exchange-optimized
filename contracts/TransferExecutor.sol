@@ -10,6 +10,7 @@ import "./ITransferExecutor.sol";
 import "./Initializable.sol";
 import "./OwnableUpgradeable.sol";
 import "./LibTransfer.sol";
+import "hardhat/console.sol";
 
 abstract contract TransferExecutor is Initializable, OwnableUpgradeable, ITransferExecutor {
     using LibTransfer for address;
@@ -36,12 +37,16 @@ abstract contract TransferExecutor is Initializable, OwnableUpgradeable, ITransf
         bytes4 transferDirection,
         bytes4 transferType
     ) internal override {
+        //console.log("TRANSFER from:", from, to, asset.value);
         if (asset.assetType.assetClass == LibAsset.ETH_ASSET_CLASS) {
+            //console.log("transfering eth ..");
             to.transferEth(asset.value);
         } else if (asset.assetType.assetClass == LibAsset.ERC20_ASSET_CLASS) {
+            //console.log("transfering erc20 ..");
             (address token) = abi.decode(asset.assetType.data, (address));
             IERC20TransferProxy(proxies[LibAsset.ERC20_ASSET_CLASS]).erc20safeTransferFrom(IERC20Upgradeable(token), from, to, asset.value);
         } else if (asset.assetType.assetClass == LibAsset.ERC721_ASSET_CLASS) {
+            //console.log("transfering erc721 ..");
             (address token, uint tokenId) = abi.decode(asset.assetType.data, (address, uint256));
             require(asset.value == 1, "erc721 value error");
             INftTransferProxy(proxies[LibAsset.ERC721_ASSET_CLASS]).erc721safeTransferFrom(IERC721Upgradeable(token), from, to, tokenId);

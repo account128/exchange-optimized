@@ -3,6 +3,7 @@ const { ethers, web3 } = require("hardhat");
 const keccak256 = require("keccak256");
 const assert = require("assert");
 const EIP712 = require("./EIP712");
+const Weth = require('weth');
 
 function id(str) {
     return `0x${keccak256(str).toString("hex").substring(0, 8)}`;
@@ -71,6 +72,7 @@ describe("ExchangeV2", function() {
     let exchange;
     let accounts;
     const ZERO = "0x0000000000000000000000000000000000000000";
+    const UINT256_MAX = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 
     // `beforeEach` will run before each test, re-deploying the contract every time
     beforeEach(async function() {
@@ -129,25 +131,32 @@ describe("ExchangeV2", function() {
     });
 
     // address1 sends nft to address2
-    it("erc721 for erc20", async function() {
+    it("erc721 for erc20 (weth)", async function() {
 
         TestERC721 = await ethers.getContractFactory("TestERC721");
         let erc721 = await TestERC721.deploy();
         await erc721.mint(accounts[1].address, 52);
         await erc721.connect(accounts[1]).setApprovalForAll(nftproxy.address, true);
 
-        TestERC20 = await ethers.getContractFactory("TestERC20");
-        let erc20 = await TestERC20.deploy();
-        await erc20.mint(accounts[2].address, 20000);
-        await erc20.connect(accounts[2]).approve(erc20proxy.address, 10000000);
+        const Weth = await ethers.getContractFactory("WETH9")
+        const weth = await Weth.deploy()
+        await weth.connect(accounts[2]).deposit({ value: 20000 });
+        await weth.connect(accounts[2]).approve(erc20proxy.address, UINT256_MAX);
+
+        // give erc721 account a weth history, this is the more common case for gas fees
+        // Explanation: 
+        //   If SSTORE changes a zero value to nonzero, it costs 20k
+        //   If SSTORE changes a nonzero value to nonzero, it costs 5k
+        await weth.connect(accounts[1]).deposit({ value: 20000 });
+        await weth.connect(accounts[1]).approve(erc20proxy.address, UINT256_MAX);
 
         //console.log("owner", await erc721.owner());
         await royaltyproxy.connect(accounts[1]).setRoyaltiesByToken(erc721.address, [
             [accounts[1].address, 500]
         ]);
 
-        const left = Order(accounts[1].address, Asset(id("ERC721"), enc(erc721.address, 52), 1), ZERO, Asset(id("ERC20"), enc(erc20.address), 10000), 1, 0, 0, "0xffffffff", "0x");
-        const right = Order(accounts[2].address, Asset(id("ERC20"), enc(erc20.address), 10000), ZERO, Asset(id("ERC721"), enc(erc721.address, 52), 1), 1, 0, 0, "0xffffffff", "0x");
+        const left = Order(accounts[1].address, Asset(id("ERC721"), enc(erc721.address, 52), 1), ZERO, Asset(id("ERC20"), enc(weth.address), 10000), 1, 0, 0, "0xffffffff", "0x");
+        const right = Order(accounts[2].address, Asset(id("ERC20"), enc(weth.address), 10000), ZERO, Asset(id("ERC721"), enc(erc721.address, 52), 1), 1, 0, 0, "0xffffffff", "0x");
 
         let signatureLeft = await sign(left, accounts[1].address, exchange.address);
         let signatureRight = await sign(right, accounts[2].address, exchange.address);
@@ -159,10 +168,12 @@ describe("ExchangeV2", function() {
 
         //NB! from: accounts[7] - who pay for NFT != order Maker
         //console.log(exchange)
-        let tx = await exchange.connect(accounts[1]).matchOrders(left, signatureLeft, right, signatureRight, { value: 10200 });
+        let tx = await exchange.connect(accounts[1]).matchOrders(left, signatureLeft, right, signatureRight);
         let receipt = await tx.wait();
         //console.log(receipt.events);
         assert.equal(await erc721.balanceOf(accounts[1].address), 0);
         assert.equal(await erc721.balanceOf(accounts[2].address), 1);
+        //assert.equal(await weth.balanceOf(accounts[1].address), 9800);
+        //assert.equal(await weth.balanceOf(accounts[2].address), 0);
     });
 });
