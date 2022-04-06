@@ -63,16 +63,9 @@ abstract contract ExchangeV2Core is
       LibAsset.AssetType memory takeMatch
     ) = matchAssets(orderLeft, orderRight);
 
-    LibOrderDataV2.DataV2 memory leftOrderData = LibOrderData.parse(orderLeft);
-    LibOrderDataV2.DataV2 memory rightOrderData = LibOrderData.parse(
-      orderRight
-    );
-
     LibFill.FillResult memory newFill = getFillSetNew(
       orderLeft,
-      orderRight,
-      leftOrderData,
-      rightOrderData
+      orderRight
     );
 
     (uint256 totalMakeValue, uint256 totalTakeValue) = doTransfers(
@@ -80,9 +73,7 @@ abstract contract ExchangeV2Core is
       takeMatch,
       newFill,
       orderLeft,
-      orderRight,
-      leftOrderData,
-      rightOrderData
+      orderRight
     );
     if (makeMatch.assetClass == LibAsset.ETH_ASSET_CLASS) {
       require(takeMatch.assetClass != LibAsset.ETH_ASSET_CLASS);
@@ -108,19 +99,18 @@ abstract contract ExchangeV2Core is
 
   function getFillSetNew(
     LibOrder.Order memory orderLeft,
-    LibOrder.Order memory orderRight,
-    LibOrderDataV2.DataV2 memory leftOrderData,
-    LibOrderDataV2.DataV2 memory rightOrderData
+    LibOrder.Order memory orderRight
   ) internal pure returns (LibFill.FillResult memory) {
     uint256 leftOrderFill = 0; // 0 as order is unfilled
     uint256 rightOrderFill = 0; // 0 as order is unfilled
+    bool isMakeFill = true;
     LibFill.FillResult memory newFill = LibFill.fillOrder(
       orderLeft,
       orderRight,
       leftOrderFill,
       rightOrderFill,
-      leftOrderData.isMakeFill,
-      rightOrderData.isMakeFill
+      isMakeFill,
+      isMakeFill
     );
 
     require(newFill.rightValue > 0 && newFill.leftValue > 0, "nothing to fill");

@@ -25,8 +25,8 @@ function Asset(assetClass, assetData, value) {
     return { assetType: AssetType(assetClass, assetData), value };
 }
 
-function Order(maker, makeAsset, taker, takeAsset, payouts, salt, start, end, dataType, data) {
-    return { maker, makeAsset, taker, takeAsset, payouts, salt, start, end, dataType, data };
+function Order(maker, makeAsset, taker, takeAsset, fees, salt, start, end) {
+    return { maker, makeAsset, taker, takeAsset, fees, salt, start, end };
 }
 
 function Part(account, value) {
@@ -47,12 +47,10 @@ const Types = {
         { name: 'makeAsset', type: 'Asset' },
         { name: 'taker', type: 'address' },
         { name: 'takeAsset', type: 'Asset' },
-        { name: 'payouts', type: 'Part[]' },
+        { name: 'fees', type: 'Part[]' },
         { name: 'salt', type: 'uint256' },
         { name: 'start', type: 'uint256' },
         { name: 'end', type: 'uint256' },
-        { name: 'dataType', type: 'bytes4' },
-        { name: 'data', type: 'bytes' },
     ],
     Part: [
         { name: 'account', type: 'address' },
@@ -77,17 +75,17 @@ describe("ExchangeV2", function() {
 
     let nftproxy;
     let erc20proxy;
-    let royaltyproxy;
     let exchange;
     let accounts;
     const ZERO = "0x0000000000000000000000000000000000000000";
     const UINT256_MAX = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+    const PROTOCOL_FEE = 0.04 // 2% on both sides
+    const ROYALTY = 0.05 // 5%
 
     // `beforeEach` will run before each test, re-deploying the contract every time
     beforeEach(async function() {
         const TransferProxy = await ethers.getContractFactory("TransferProxy");
         const ERC20TransferProxy = await ethers.getContractFactory("ERC20TransferProxy");
-        const RoyaltiesRegistry = await ethers.getContractFactory("RoyaltiesRegistry");
         const protocolFee = 200;
 
         accounts = await ethers.getSigners();
@@ -96,12 +94,10 @@ describe("ExchangeV2", function() {
         await nftproxy.__TransferProxy_init()
         erc20proxy = await ERC20TransferProxy.deploy();
         await erc20proxy.__ERC20TransferProxy_init()
-        royaltyproxy = await RoyaltiesRegistry.deploy();
-        await royaltyproxy.__RoyaltiesRegistry_init()
 
         const ExchangeV2 = await ethers.getContractFactory("ExchangeV2");
         exchange = await ExchangeV2.deploy();
-        await exchange.__ExchangeV2_init(nftproxy.address, erc20proxy.address, protocolFee, accounts[0].address, royaltyproxy.address);
+        await exchange.__ExchangeV2_init(nftproxy.address, erc20proxy.address);
 
         await nftproxy.addOperator(exchange.address);
         await erc20proxy.addOperator(exchange.address);
@@ -115,17 +111,12 @@ describe("ExchangeV2", function() {
         await erc721.mint(accounts[1].address, 52);
         await erc721.connect(accounts[1]).setApprovalForAll(nftproxy.address, true);
 
-        //console.log("owner", await erc721.owner());
-        await royaltyproxy.connect(accounts[1]).setRoyaltiesByToken(erc721.address, [
-            [accounts[1].address, 500]
-        ]);
+        const amount = 10000;
+        let leftFees = []; // zero because no money is involved on this side
+        let rightFees = [Part(accounts[0].address, amount * ROYALTY), Part(accounts[0].address, amount * PROTOCOL_FEE)]; // royalties and protocol fee (2% x 2 = 4%) 
 
-
-        let leftPayouts = []; // zero because no money is involved on this side
-        let rightPayouts = [Part(accounts[0].address, 500), Part(accounts[0].address, 400)]; // royalties and protocol fee (2% x 2 = 4%) 
-
-        const left = Order(accounts[1].address, Asset(id("ERC721"), enc(erc721.address, 52), 1), ZERO, Asset(id("ETH"), "0x", 10000), leftPayouts, 1, 0, 0, "0xffffffff", "0x");
-        const right = Order(accounts[2].address, Asset(id("ETH"), "0x", 10000), ZERO, Asset(id("ERC721"), enc(erc721.address, 52), 1), rightPayouts, 1, 0, 0, "0xffffffff", "0x");
+        const left = Order(accounts[1].address, Asset(id("ERC721"), enc(erc721.address, 52), 1), ZERO, Asset(id("ETH"), "0x", amount), leftFees, 1, 0, 0, );
+        const right = Order(accounts[2].address, Asset(id("ETH"), "0x", amount), ZERO, Asset(id("ERC721"), enc(erc721.address, 52), 1), rightFees, 1, 0, 0, );
 
         let signatureLeft = await sign(left, accounts[1].address, exchange.address);
         let signatureRight = await sign(right, accounts[2].address, exchange.address);
@@ -164,16 +155,12 @@ describe("ExchangeV2", function() {
         await weth.connect(accounts[1]).deposit({ value: 20000 });
         await weth.connect(accounts[1]).approve(erc20proxy.address, UINT256_MAX);
 
-        //console.log("owner", await erc721.owner());
-        await royaltyproxy.connect(accounts[1]).setRoyaltiesByToken(erc721.address, [
-            [accounts[1].address, 500]
-        ]);
+        const amount = 10000;
+        let leftFees = []; // zero because no money is involved on this side
+        let rightFees = [Part(accounts[0].address, amount * ROYALTY), Part(accounts[0].address, amount * PROTOCOL_FEE)];
 
-        let leftPayouts = []; // zero because no money is involved on this side
-        let rightPayouts = [Part(accounts[0].address, 500), Part(accounts[0].address, 400)]; // royalties and protocol fee (2% x 2 = 4%) 
-
-        const left = Order(accounts[1].address, Asset(id("ERC721"), enc(erc721.address, 52), 1), ZERO, Asset(id("ERC20"), enc(weth.address), 10000), leftPayouts, 1, 0, 0, "0xffffffff", "0x");
-        const right = Order(accounts[2].address, Asset(id("ERC20"), enc(weth.address), 10000), ZERO, Asset(id("ERC721"), enc(erc721.address, 52), 1), rightPayouts, 1, 0, 0, "0xffffffff", "0x");
+        const left = Order(accounts[1].address, Asset(id("ERC721"), enc(erc721.address, 52), 1), ZERO, Asset(id("ERC20"), enc(weth.address), 10000), leftFees, 1, 0, 0);
+        const right = Order(accounts[2].address, Asset(id("ERC20"), enc(weth.address), 10000), ZERO, Asset(id("ERC721"), enc(erc721.address, 52), 1), rightFees, 1, 0, 0);
 
         let signatureLeft = await sign(left, accounts[1].address, exchange.address);
         let signatureRight = await sign(right, accounts[2].address, exchange.address);
