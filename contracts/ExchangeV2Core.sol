@@ -96,14 +96,14 @@ abstract contract ExchangeV2Core is
         address(msg.sender).transferEth(msg.value.sub(totalTakeValue));
       }
     }
-    emit Match(
-      orderLeft.maker,
-      orderRight.maker,
-      newFill.rightValue,
-      newFill.leftValue,
-      makeMatch,
-      takeMatch
-    );
+    // emit Match(
+    //   orderLeft.maker,
+    //   orderRight.maker,
+    //   newFill.rightValue,
+    //   newFill.leftValue,
+    //   makeMatch,
+    //   takeMatch
+    // );
   }
 
   function getFillSetNew(

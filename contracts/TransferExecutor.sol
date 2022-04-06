@@ -56,7 +56,7 @@ abstract contract TransferExecutor is Initializable, OwnableUpgradeable, ITransf
         } else {
             ITransferProxy(proxies[asset.assetType.assetClass]).transfer(asset, from, to);
         }
-        emit Transfer(asset, from, to, transferDirection, transferType);
+        //emit Transfer(asset, from, to, transferDirection, transferType);
     }
 
     uint256[49] private __gap;
