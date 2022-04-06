@@ -25,8 +25,12 @@ function Asset(assetClass, assetData, value) {
     return { assetType: AssetType(assetClass, assetData), value };
 }
 
-function Order(maker, makeAsset, taker, takeAsset, salt, start, end, dataType, data) {
-    return { maker, makeAsset, taker, takeAsset, salt, start, end, dataType, data };
+function Order(maker, makeAsset, taker, takeAsset, payouts, salt, start, end, dataType, data) {
+    return { maker, makeAsset, taker, takeAsset, payouts, salt, start, end, dataType, data };
+}
+
+function Part(account, value) {
+    return { account, value };
 }
 
 const Types = {
@@ -43,11 +47,16 @@ const Types = {
         { name: 'makeAsset', type: 'Asset' },
         { name: 'taker', type: 'address' },
         { name: 'takeAsset', type: 'Asset' },
+        { name: 'payouts', type: 'Part[]' },
         { name: 'salt', type: 'uint256' },
         { name: 'start', type: 'uint256' },
         { name: 'end', type: 'uint256' },
         { name: 'dataType', type: 'bytes4' },
         { name: 'data', type: 'bytes' },
+    ],
+    Part: [
+        { name: 'account', type: 'address' },
+        { name: 'value', type: 'uint96' },
     ]
 };
 
@@ -110,8 +119,13 @@ describe("ExchangeV2", function() {
         await royaltyproxy.connect(accounts[1]).setRoyaltiesByToken(erc721.address, [
             [accounts[1].address, 500]
         ]);
-        const left = Order(accounts[1].address, Asset(id("ERC721"), enc(erc721.address, 52), 1), ZERO, Asset(id("ETH"), "0x", 10000), 1, 0, 0, "0xffffffff", "0x");
-        const right = Order(accounts[2].address, Asset(id("ETH"), "0x", 10000), ZERO, Asset(id("ERC721"), enc(erc721.address, 52), 1), 1, 0, 0, "0xffffffff", "0x");
+
+
+        let leftPayouts = []; // zero because no money is involved on this side
+        let rightPayouts = [Part(accounts[0].address, 500), Part(accounts[0].address, 400)]; // royalties and protocol fee (2% x 2 = 4%) 
+
+        const left = Order(accounts[1].address, Asset(id("ERC721"), enc(erc721.address, 52), 1), ZERO, Asset(id("ETH"), "0x", 10000), leftPayouts, 1, 0, 0, "0xffffffff", "0x");
+        const right = Order(accounts[2].address, Asset(id("ETH"), "0x", 10000), ZERO, Asset(id("ERC721"), enc(erc721.address, 52), 1), rightPayouts, 1, 0, 0, "0xffffffff", "0x");
 
         let signatureLeft = await sign(left, accounts[1].address, exchange.address);
         let signatureRight = await sign(right, accounts[2].address, exchange.address);
@@ -155,8 +169,11 @@ describe("ExchangeV2", function() {
             [accounts[1].address, 500]
         ]);
 
-        const left = Order(accounts[1].address, Asset(id("ERC721"), enc(erc721.address, 52), 1), ZERO, Asset(id("ERC20"), enc(weth.address), 10000), 1, 0, 0, "0xffffffff", "0x");
-        const right = Order(accounts[2].address, Asset(id("ERC20"), enc(weth.address), 10000), ZERO, Asset(id("ERC721"), enc(erc721.address, 52), 1), 1, 0, 0, "0xffffffff", "0x");
+        let leftPayouts = []; // zero because no money is involved on this side
+        let rightPayouts = [Part(accounts[0].address, 500), Part(accounts[0].address, 400)]; // royalties and protocol fee (2% x 2 = 4%) 
+
+        const left = Order(accounts[1].address, Asset(id("ERC721"), enc(erc721.address, 52), 1), ZERO, Asset(id("ERC20"), enc(weth.address), 10000), leftPayouts, 1, 0, 0, "0xffffffff", "0x");
+        const right = Order(accounts[2].address, Asset(id("ERC20"), enc(weth.address), 10000), ZERO, Asset(id("ERC721"), enc(erc721.address, 52), 1), rightPayouts, 1, 0, 0, "0xffffffff", "0x");
 
         let signatureLeft = await sign(left, accounts[1].address, exchange.address);
         let signatureRight = await sign(right, accounts[2].address, exchange.address);
