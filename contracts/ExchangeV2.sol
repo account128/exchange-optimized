@@ -23,6 +23,5 @@ contract ExchangeV2 is ExchangeV2Core, RaribleTransferManager {
       newDefaultFeeReceiver,
       newRoyaltiesProvider
     );
-    __OrderValidator_init_unchained();
   }
 }
