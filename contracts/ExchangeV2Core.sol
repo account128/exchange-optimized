@@ -58,66 +58,62 @@ abstract contract ExchangeV2Core is
     LibOrder.Order memory orderLeft,
     LibOrder.Order memory orderRight
   ) internal {
-    (
-      LibAsset.AssetType memory makeMatch,
-      LibAsset.AssetType memory takeMatch
-    ) = matchAssets(orderLeft, orderRight);
 
-    LibFill.FillResult memory newFill = LibFill.FillResult(orderLeft.makeAsset.value, orderRight.makeAsset.value);
+    matchAssets(orderLeft, orderRight);
 
     (uint256 totalMakeValue, uint256 totalTakeValue) = doTransfers(
-      makeMatch,
-      takeMatch,
-      newFill,
       orderLeft,
       orderRight
     );
-    if (makeMatch.assetClass == LibAsset.ETH_ASSET_CLASS) {
-      require(takeMatch.assetClass != LibAsset.ETH_ASSET_CLASS);
-      require(msg.value >= totalMakeValue, "not enough eth");
-      if (msg.value > totalMakeValue) {
-        address(msg.sender).transferEth(msg.value.sub(totalMakeValue));
+
+    for(uint i=0; i<orderLeft.makeAssets.length; i++) {
+      if (orderLeft.makeAssets[i].assetType.assetClass == LibAsset.ETH_ASSET_CLASS) {
+        require(msg.value >= totalMakeValue, "not enough eth");
+        if (msg.value > totalMakeValue) {
+          address(msg.sender).transferEth(msg.value.sub(totalMakeValue));
+        }
       }
-    } else if (takeMatch.assetClass == LibAsset.ETH_ASSET_CLASS) {
-      require(msg.value >= totalTakeValue, "not enough eth");
-      if (msg.value > totalTakeValue) {
-        address(msg.sender).transferEth(msg.value.sub(totalTakeValue));
+    }
+    for(uint i=0; i<orderRight.makeAssets.length; i++) {
+      if (orderLeft.takeAssets[i].assetType.assetClass == LibAsset.ETH_ASSET_CLASS) {
+        require(msg.value >= totalTakeValue, "not enough eth");
+        if (msg.value > totalTakeValue) {
+          address(msg.sender).transferEth(msg.value.sub(totalTakeValue));
+        }
       }
     }
     // emit Match(
     //   orderLeft.maker,
     //   orderRight.maker,
-    //   newFill.rightValue,
-    //   newFill.leftValue,
+    //   totalMakeValue,
+    //   totalTakeValue,
     //   makeMatch,
     //   takeMatch
     // );
   }
 
+  // ensure that order types are matched
   function matchAssets(
     LibOrder.Order memory orderLeft,
     LibOrder.Order memory orderRight
   )
     internal
     view
-    returns (
-      LibAsset.AssetType memory makeMatch,
-      LibAsset.AssetType memory takeMatch
-    )
   {
-    require(orderLeft.makeAsset.value == orderRight.takeAsset.value, "asset values don't match");
-    require(orderLeft.takeAsset.value == orderRight.makeAsset.value, "asset values don't match");
+    for (uint i = 0; i < orderLeft.makeAssets.length; i++) {
+      require(orderLeft.makeAssets[i].value == orderRight.takeAssets[i].value, "asset values don't match");
+      LibAsset.AssetType memory assetMatch = matchAssets(orderLeft.makeAssets[i].assetType,orderRight.takeAssets[i].assetType);
+      require( assetMatch.assetClass != 0, "assets don't match");
+    }
 
-    makeMatch = matchAssets(
-      orderLeft.makeAsset.assetType,
-      orderRight.takeAsset.assetType
-    );
-    require(makeMatch.assetClass != 0, "assets don't match");
-    takeMatch = matchAssets(
-      orderLeft.takeAsset.assetType,
-      orderRight.makeAsset.assetType
-    );
-    require(takeMatch.assetClass != 0, "assets don't match");
+    for (uint i = 0; i < orderLeft.takeAssets.length; i++) {
+      require(orderLeft.takeAssets[i].value == orderRight.makeAssets[i].value, "asset values don't match");
+      LibAsset.AssetType memory assetMatch = matchAssets(
+        orderLeft.takeAssets[i].assetType,
+        orderRight.makeAssets[i].assetType
+      );
+      require(assetMatch.assetClass != 0, "assets don't match");
+    }
   }
 
   function validateFull(LibOrder.Order memory order, bytes memory signature)

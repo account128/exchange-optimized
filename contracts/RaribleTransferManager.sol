@@ -19,30 +19,57 @@ abstract contract RaribleTransferManager is
   using SafeMathUpgradeable for uint256;
 
   function doTransfers(
-    LibAsset.AssetType memory makeMatch,
-    LibAsset.AssetType memory takeMatch,
-    LibFill.FillResult memory fill,
     LibOrder.Order memory leftOrder,
     LibOrder.Order memory rightOrder
   ) internal override returns (uint256 totalMakeValue, uint256 totalTakeValue) {
-    totalMakeValue = fill.leftValue;
-    totalTakeValue = fill.rightValue;
-    transferPayoutAndFees(
-      makeMatch,
-      fill.leftValue,
-      leftOrder.maker,
-      rightOrder.maker,
-      leftOrder.fees,
-      TO_TAKER
-    );
-    transferPayoutAndFees(
-      takeMatch,
-      fill.rightValue,
-      rightOrder.maker,
-      leftOrder.maker,
-      rightOrder.fees,
-      TO_MAKER
-    );
+  
+    for(uint i =0; i<leftOrder.makeAssets.length; i++) {
+      LibAsset.AssetType memory makeMatch = leftOrder.makeAssets[i].assetType;
+      if(makeMatch.assetClass == LibAsset.ETH_ASSET_CLASS || makeMatch.assetClass == LibAsset.ERC20_ASSET_CLASS) {
+        transferPayoutAndFees(
+          makeMatch,
+          leftOrder.makeAssets[i].value,
+          leftOrder.maker,
+          rightOrder.maker,
+          leftOrder.fees,
+          TO_TAKER
+        );
+        totalMakeValue = leftOrder.makeAssets[i].value;
+      }
+      else {
+        transferPayout(
+          makeMatch,
+          leftOrder.makeAssets[i].value,
+          leftOrder.maker,
+          rightOrder.maker,
+          TO_TAKER
+        );
+      }
+    }
+
+    for(uint i =0; i<leftOrder.takeAssets.length; i++) {
+      LibAsset.AssetType memory takeMatch = leftOrder.takeAssets[i].assetType;
+      if(takeMatch.assetClass == LibAsset.ETH_ASSET_CLASS || takeMatch.assetClass == LibAsset.ERC20_ASSET_CLASS) {
+        transferPayoutAndFees(
+          takeMatch,
+          leftOrder.takeAssets[i].value,
+          rightOrder.maker,
+          leftOrder.maker,
+          rightOrder.fees,
+          TO_MAKER
+        );
+        totalTakeValue = leftOrder.takeAssets[i].value;
+      }
+      else {
+        transferPayout(
+          takeMatch,
+          leftOrder.takeAssets[i].value,
+          rightOrder.maker,
+          leftOrder.maker,
+          TO_MAKER
+        );
+      }
+    }
   }
 
   function transferPayoutAndFees(
@@ -71,9 +98,26 @@ abstract contract RaribleTransferManager is
       }
     }
     // Transfer payout
-    if (restValue > 0) {
+    transferPayout(
+      matchCalculate,
+      restValue,
+      from,
+      to,
+      transferDirection
+    );
+  }
+
+  function transferPayout(
+    LibAsset.AssetType memory matchCalculate,
+    uint256 amount,
+    address from,
+    address to,
+    bytes4 transferDirection
+  ) internal {
+
+    if (amount > 0) {
       transfer(
-        LibAsset.Asset(matchCalculate, restValue),
+        LibAsset.Asset(matchCalculate, amount),
         from,
         to,
         transferDirection,

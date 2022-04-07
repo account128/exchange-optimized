@@ -25,8 +25,8 @@ function Asset(assetClass, assetData, value) {
     return { assetType: AssetType(assetClass, assetData), value };
 }
 
-function Order(maker, makeAsset, taker, takeAsset, fees, salt, start, end) {
-    return { maker, makeAsset, taker, takeAsset, fees, salt, start, end };
+function Order(maker, makeAssets, taker, takeAssets, fees, salt, start, end) {
+    return { maker, makeAssets, taker, takeAssets, fees, salt, start, end };
 }
 
 function Part(account, value) {
@@ -44,9 +44,9 @@ const Types = {
     ],
     Order: [
         { name: 'maker', type: 'address' },
-        { name: 'makeAsset', type: 'Asset' },
+        { name: 'makeAssets', type: 'Asset[]' },
         { name: 'taker', type: 'address' },
-        { name: 'takeAsset', type: 'Asset' },
+        { name: 'takeAssets', type: 'Asset[]' },
         { name: 'fees', type: 'Part[]' },
         { name: 'salt', type: 'uint256' },
         { name: 'start', type: 'uint256' },
@@ -115,8 +115,10 @@ describe("ExchangeV2", function() {
         let leftFees = []; // zero because no money is involved on this side
         let rightFees = [Part(accounts[0].address, amount * ROYALTY), Part(accounts[0].address, amount * PROTOCOL_FEE)]; // royalties and protocol fee (2% x 2 = 4%) 
 
-        const left = Order(accounts[1].address, Asset(id("ERC721"), enc(erc721.address, 52), 1), ZERO, Asset(id("ETH"), "0x", amount), leftFees, 1, 0, 0, );
-        const right = Order(accounts[2].address, Asset(id("ETH"), "0x", amount), ZERO, Asset(id("ERC721"), enc(erc721.address, 52), 1), rightFees, 1, 0, 0, );
+        let makeAssets = [Asset(id("ERC721"), enc(erc721.address, 52), 1)];
+        let takeAssets = [Asset(id("ETH"), "0x", amount)];
+        const left = Order(accounts[1].address, makeAssets, ZERO, takeAssets, leftFees, 1, 0, 0, );
+        const right = Order(accounts[2].address, takeAssets, ZERO, makeAssets, rightFees, 1, 0, 0, );
 
         let signatureLeft = await sign(left, accounts[1].address, exchange.address);
         let signatureRight = await sign(right, accounts[2].address, exchange.address);
@@ -128,7 +130,7 @@ describe("ExchangeV2", function() {
 
         //NB! from: accounts[7] - who pay for NFT != order Maker
         //console.log(exchange)
-        let tx = await exchange.connect(accounts[1]).matchOrders(left, signatureLeft, right, signatureRight, { value: 10200 });
+        let tx = await exchange.connect(accounts[1]).matchOrders(left, signatureLeft, right, signatureRight, { value: amount });
         let receipt = await tx.wait();
         //console.log(receipt.events);
         assert.equal(await erc721.balanceOf(accounts[1].address), 0);
@@ -159,8 +161,11 @@ describe("ExchangeV2", function() {
         let leftFees = []; // zero because no money is involved on this side
         let rightFees = [Part(accounts[0].address, amount * ROYALTY), Part(accounts[0].address, amount * PROTOCOL_FEE)];
 
-        const left = Order(accounts[1].address, Asset(id("ERC721"), enc(erc721.address, 52), 1), ZERO, Asset(id("ERC20"), enc(weth.address), 10000), leftFees, 1, 0, 0);
-        const right = Order(accounts[2].address, Asset(id("ERC20"), enc(weth.address), 10000), ZERO, Asset(id("ERC721"), enc(erc721.address, 52), 1), rightFees, 1, 0, 0);
+        let makeAssets = [Asset(id("ERC721"), enc(erc721.address, 52), 1)];
+        let takeAssets = [Asset(id("ERC20"), enc(weth.address), amount)];
+        const left = Order(accounts[1].address, makeAssets, ZERO, takeAssets, leftFees, 1, 0, 0, );
+        const right = Order(accounts[2].address, takeAssets, ZERO, makeAssets, rightFees, 1, 0, 0, );
+
 
         let signatureLeft = await sign(left, accounts[1].address, exchange.address);
         let signatureRight = await sign(right, accounts[2].address, exchange.address);
@@ -177,6 +182,112 @@ describe("ExchangeV2", function() {
         //console.log(receipt.events);
         assert.equal(await erc721.balanceOf(accounts[1].address), 0);
         assert.equal(await erc721.balanceOf(accounts[2].address), 1);
+        //assert.equal(await weth.balanceOf(accounts[1].address), 9800);
+        //assert.equal(await weth.balanceOf(accounts[2].address), 0);
+    });
+
+    // address1 sends 3 seperate nfts to address2
+    it("3 erc721s for eth", async function() {
+
+        TestERC721 = await ethers.getContractFactory("TestERC721");
+        let erc721_1 = await TestERC721.deploy();
+        await erc721_1.mint(accounts[1].address, 52);
+        await erc721_1.connect(accounts[1]).setApprovalForAll(nftproxy.address, true);
+        let erc721_2 = await TestERC721.deploy();
+        await erc721_2.mint(accounts[1].address, 52);
+        await erc721_2.connect(accounts[1]).setApprovalForAll(nftproxy.address, true);
+        let erc721_3 = await TestERC721.deploy();
+        await erc721_3.mint(accounts[1].address, 52);
+        await erc721_3.connect(accounts[1]).setApprovalForAll(nftproxy.address, true);
+
+        const amount = 10000;
+        let leftFees = []; // zero because no money is involved on this side
+        let rightFees = [Part(accounts[0].address, amount * ROYALTY), Part(accounts[0].address, amount * PROTOCOL_FEE)];
+
+        let makeAssets = [Asset(id("ERC721"), enc(erc721_1.address, 52), 1), Asset(id("ERC721"), enc(erc721_2.address, 52), 1), Asset(id("ERC721"), enc(erc721_3.address, 52), 1)];
+        let takeAssets = [Asset(id("ETH"), "0x", amount)];
+        const left = Order(accounts[1].address, makeAssets, ZERO, takeAssets, leftFees, 1, 0, 0, );
+        const right = Order(accounts[2].address, takeAssets, ZERO, makeAssets, rightFees, 1, 0, 0, );
+
+
+        let signatureLeft = await sign(left, accounts[1].address, exchange.address);
+        let signatureRight = await sign(right, accounts[2].address, exchange.address);
+
+        // console.log(left);
+        // console.log(right);
+        //console.log(signatureLeft);
+        //console.log(signatureRight);
+
+        //NB! from: accounts[7] - who pay for NFT != order Maker
+        //console.log(exchange)
+        let tx = await exchange.connect(accounts[1]).matchOrders(left, signatureLeft, right, signatureRight, { value: amount });
+        let receipt = await tx.wait();
+        //console.log(receipt.events);
+        assert.equal(await erc721_1.balanceOf(accounts[1].address), 0);
+        assert.equal(await erc721_1.balanceOf(accounts[2].address), 1);
+        assert.equal(await erc721_2.balanceOf(accounts[1].address), 0);
+        assert.equal(await erc721_2.balanceOf(accounts[2].address), 1);
+        assert.equal(await erc721_3.balanceOf(accounts[1].address), 0);
+        assert.equal(await erc721_3.balanceOf(accounts[2].address), 1);
+        //assert.equal(await weth.balanceOf(accounts[1].address), 9800);
+        //assert.equal(await weth.balanceOf(accounts[2].address), 0);
+    });
+
+    // address1 sends 3 seperate nfts to address2
+    it("3 erc721s for erc20 (weth)", async function() {
+
+        TestERC721 = await ethers.getContractFactory("TestERC721");
+        let erc721_1 = await TestERC721.deploy();
+        await erc721_1.mint(accounts[1].address, 52);
+        await erc721_1.connect(accounts[1]).setApprovalForAll(nftproxy.address, true);
+        let erc721_2 = await TestERC721.deploy();
+        await erc721_2.mint(accounts[1].address, 52);
+        await erc721_2.connect(accounts[1]).setApprovalForAll(nftproxy.address, true);
+        let erc721_3 = await TestERC721.deploy();
+        await erc721_3.mint(accounts[1].address, 52);
+        await erc721_3.connect(accounts[1]).setApprovalForAll(nftproxy.address, true);
+
+        const Weth = await ethers.getContractFactory("WETH9")
+        const weth = await Weth.deploy()
+        await weth.connect(accounts[2]).deposit({ value: 20000 });
+        await weth.connect(accounts[2]).approve(erc20proxy.address, UINT256_MAX);
+
+        // give erc721 account a weth history, this is the more common case for gas fees
+        // Explanation: 
+        //   If SSTORE changes a zero value to nonzero, it costs 20k
+        //   If SSTORE changes a nonzero value to nonzero, it costs 5k
+        await weth.connect(accounts[1]).deposit({ value: 20000 });
+        await weth.connect(accounts[1]).approve(erc20proxy.address, UINT256_MAX);
+
+        const amount = 10000;
+        let leftFees = []; // zero because no money is involved on this side
+        let rightFees = [Part(accounts[0].address, amount * ROYALTY), Part(accounts[0].address, amount * PROTOCOL_FEE)];
+
+        let makeAssets = [Asset(id("ERC721"), enc(erc721_1.address, 52), 1), Asset(id("ERC721"), enc(erc721_2.address, 52), 1), Asset(id("ERC721"), enc(erc721_3.address, 52), 1)];
+        let takeAssets = [Asset(id("ERC20"), enc(weth.address), 10000)];
+        const left = Order(accounts[1].address, makeAssets, ZERO, takeAssets, leftFees, 1, 0, 0, );
+        const right = Order(accounts[2].address, takeAssets, ZERO, makeAssets, rightFees, 1, 0, 0, );
+
+
+        let signatureLeft = await sign(left, accounts[1].address, exchange.address);
+        let signatureRight = await sign(right, accounts[2].address, exchange.address);
+
+        // console.log(left);
+        // console.log(right);
+        //console.log(signatureLeft);
+        //console.log(signatureRight);
+
+        //NB! from: accounts[7] - who pay for NFT != order Maker
+        //console.log(exchange)
+        let tx = await exchange.connect(accounts[1]).matchOrders(left, signatureLeft, right, signatureRight);
+        let receipt = await tx.wait();
+        //console.log(receipt.events);
+        assert.equal(await erc721_1.balanceOf(accounts[1].address), 0);
+        assert.equal(await erc721_1.balanceOf(accounts[2].address), 1);
+        assert.equal(await erc721_2.balanceOf(accounts[1].address), 0);
+        assert.equal(await erc721_2.balanceOf(accounts[2].address), 1);
+        assert.equal(await erc721_3.balanceOf(accounts[1].address), 0);
+        assert.equal(await erc721_3.balanceOf(accounts[2].address), 1);
         //assert.equal(await weth.balanceOf(accounts[1].address), 9800);
         //assert.equal(await weth.balanceOf(accounts[2].address), 0);
     });

@@ -13,9 +13,6 @@ abstract contract ITransferManager is ITransferExecutor {
     bytes4 constant PAYOUT = bytes4(keccak256("PAYOUT"));
 
     function doTransfers(
-        LibAsset.AssetType memory makeMatch,
-        LibAsset.AssetType memory takeMatch,
-        LibFill.FillResult memory fill,
         LibOrder.Order memory leftOrder,
         LibOrder.Order memory rightOrder
     ) internal virtual returns (uint totalMakeValue, uint totalTakeValue);
