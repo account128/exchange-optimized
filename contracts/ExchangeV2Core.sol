@@ -39,31 +39,74 @@ abstract contract ExchangeV2Core is
   ) external payable {
     validateFull(orderLeft, signatureLeft);
     validateFull(orderRight, signatureRight);
-    if (orderLeft.taker != address(0)) {
+
+    LibAsset.Asset[] memory leftMakeAssets = new LibAsset.Asset[](1);
+    leftMakeAssets[0] = orderLeft.makeAsset;
+    LibAsset.Asset[] memory leftTakeAssets = new LibAsset.Asset[](1);
+    leftTakeAssets[0] = orderLeft.takeAsset;
+    LibOrder.OrderBatch memory orderLeftBatch = LibOrder.OrderBatch(orderLeft.maker, leftMakeAssets, orderLeft.taker, leftTakeAssets, orderLeft.salt, orderLeft.start, orderLeft.end, orderLeft.dataType, orderLeft.data);
+
+    LibAsset.Asset[] memory rightMakeAssets = new LibAsset.Asset[](1);
+    rightMakeAssets[0] = orderRight.makeAsset;
+    LibAsset.Asset[] memory rightTakeAssets = new LibAsset.Asset[](1);
+    rightTakeAssets[0] = orderRight.takeAsset;
+    LibOrder.OrderBatch memory orderRightBatch = LibOrder.OrderBatch(orderRight.maker, rightMakeAssets, orderRight.taker, rightTakeAssets, orderRight.salt, orderRight.start, orderRight.end, orderRight.dataType, orderRight.data);
+
+    if (orderLeftBatch.taker != address(0)) {
       require(
-        orderRight.maker == orderLeft.taker,
+        orderRightBatch.maker == orderLeftBatch.taker,
         "leftOrder.taker verification failed"
       );
     }
-    if (orderRight.taker != address(0)) {
+    if (orderRightBatch.taker != address(0)) {
       require(
-        orderRight.taker == orderLeft.maker,
+        orderRightBatch.taker == orderLeftBatch.maker,
         "rightOrder.taker verification failed"
       );
     }
-    matchAndTransfer(orderLeft, orderRight);
+    matchAndTransfer(orderLeftBatch, orderRightBatch);
+  }
+
+  function matchOrdersBatch(
+    LibOrder.OrderBatch memory orderLeftBatch,
+    bytes memory signatureLeft,
+    LibOrder.OrderBatch memory orderRightBatch,
+    bytes memory signatureRight
+  ) external payable {
+
+    validateFull(orderLeftBatch, signatureLeft);
+    validateFull(orderRightBatch, signatureRight);
+
+    if (orderLeftBatch.taker != address(0)) {
+      require(
+        orderRightBatch.maker == orderLeftBatch.taker,
+        "leftOrder.taker verification failed"
+      );
+    }
+    if (orderRightBatch.taker != address(0)) {
+      require(
+        orderRightBatch.taker == orderLeftBatch.maker,
+        "rightOrder.taker verification failed"
+      );
+    }
+    matchAndTransfer(orderLeftBatch, orderRightBatch);
   }
 
   function matchAndTransfer(
-    LibOrder.Order memory orderLeft,
-    LibOrder.Order memory orderRight
+    LibOrder.OrderBatch memory orderLeft,
+    LibOrder.OrderBatch memory orderRight
   ) internal {
 
     matchAssets(orderLeft, orderRight);
 
+    LibOrderDataV2.DataV2 memory leftOrderData = LibOrderData.parse(orderLeft);
+    LibOrderDataV2.DataV2 memory rightOrderData = LibOrderData.parse(orderRight);
+
     (uint256 totalMakeValue, uint256 totalTakeValue) = doTransfers(
       orderLeft,
-      orderRight
+      orderRight,
+      leftOrderData,
+      rightOrderData
     );
 
     for(uint i=0; i<orderLeft.makeAssets.length; i++) {
@@ -94,8 +137,8 @@ abstract contract ExchangeV2Core is
 
   // ensure that order types are matched
   function matchAssets(
-    LibOrder.Order memory orderLeft,
-    LibOrder.Order memory orderRight
+    LibOrder.OrderBatch memory orderLeft,
+    LibOrder.OrderBatch memory orderRight
   )
     internal
     view
@@ -121,7 +164,15 @@ abstract contract ExchangeV2Core is
     view
   {
     LibOrder.validate(order);
-    validate(order, signature);
+    OrderValidator.validate(order, signature);
+  }
+
+  function validateFull(LibOrder.OrderBatch memory order, bytes memory signature)
+    internal
+    view
+  {
+    LibOrder.validate(order);
+    OrderValidator.validate(order, signature);
   }
 
   uint256[49] private __gap;

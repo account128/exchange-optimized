@@ -6,6 +6,7 @@ pragma abicoder v2;
 import "./LibAsset.sol";
 import "./LibFill.sol";
 import "./TransferExecutor.sol";
+import "./LibOrderData.sol";
 
 abstract contract ITransferManager is ITransferExecutor {
     bytes4 constant TO_MAKER = bytes4(keccak256("TO_MAKER"));
@@ -13,7 +14,9 @@ abstract contract ITransferManager is ITransferExecutor {
     bytes4 constant PAYOUT = bytes4(keccak256("PAYOUT"));
 
     function doTransfers(
-        LibOrder.Order memory leftOrder,
-        LibOrder.Order memory rightOrder
+        LibOrder.OrderBatch memory leftOrder,
+        LibOrder.OrderBatch memory rightOrder,
+        LibOrderDataV2.DataV2 memory leftOrderData,
+        LibOrderDataV2.DataV2 memory rightOrderData
     ) internal virtual returns (uint totalMakeValue, uint totalTakeValue);
 }

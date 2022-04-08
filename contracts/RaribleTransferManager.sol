@@ -19,8 +19,10 @@ abstract contract RaribleTransferManager is
   using SafeMathUpgradeable for uint256;
 
   function doTransfers(
-    LibOrder.Order memory leftOrder,
-    LibOrder.Order memory rightOrder
+    LibOrder.OrderBatch memory leftOrder,
+    LibOrder.OrderBatch memory rightOrder,
+    LibOrderDataV2.DataV2 memory leftOrderData,
+    LibOrderDataV2.DataV2 memory rightOrderData
   ) internal override returns (uint256 totalMakeValue, uint256 totalTakeValue) {
   
     for(uint i =0; i<leftOrder.makeAssets.length; i++) {
@@ -31,7 +33,7 @@ abstract contract RaribleTransferManager is
           leftOrder.makeAssets[i].value,
           leftOrder.maker,
           rightOrder.maker,
-          leftOrder.fees,
+          leftOrderData.payouts,
           TO_TAKER
         );
         totalMakeValue = leftOrder.makeAssets[i].value;
@@ -55,7 +57,7 @@ abstract contract RaribleTransferManager is
           leftOrder.takeAssets[i].value,
           rightOrder.maker,
           leftOrder.maker,
-          rightOrder.fees,
+          rightOrderData.payouts,
           TO_MAKER
         );
         totalTakeValue = leftOrder.takeAssets[i].value;
