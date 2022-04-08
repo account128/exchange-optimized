@@ -22,14 +22,25 @@ abstract contract ExchangeV2Core is
   using SafeMathUpgradeable for uint256;
   using LibTransfer for address;
 
-  event Match(
-    address leftMaker,
-    address rightMaker,
-    uint256 newLeftFill,
-    uint256 newRightFill,
-    LibAsset.AssetType leftAsset,
-    LibAsset.AssetType rightAsset
-  );
+  // state of orders
+  mapping(uint256 => uint256) public isCancelled;
+
+  event Cancel();
+  event Match();
+
+  function cancel(LibOrder.Order memory order) external {
+    require(_msgSender() == order.maker, "not a maker");
+    require(order.salt != 0, "0 salt can't be used");
+    isCancelled[order.salt] = 1;
+    emit Cancel();
+  }
+
+  function cancelBatch(LibOrder.OrderBatch memory order) external {
+    require(_msgSender() == order.maker, "not a maker");
+    require(order.salt != 0, "0 salt can't be used");
+    isCancelled[order.salt] = 1;
+    emit Cancel();
+  }
 
   function matchOrders(
     LibOrder.Order memory orderLeft,
@@ -125,14 +136,7 @@ abstract contract ExchangeV2Core is
         }
       }
     }
-    // emit Match(
-    //   orderLeft.maker,
-    //   orderRight.maker,
-    //   totalMakeValue,
-    //   totalTakeValue,
-    //   makeMatch,
-    //   takeMatch
-    // );
+    emit Match();
   }
 
   // ensure that order types are matched
@@ -163,6 +167,7 @@ abstract contract ExchangeV2Core is
     internal
     view
   {
+    require(isCancelled[order.salt] == 0, "Order has been cancelled");
     LibOrder.validate(order);
     OrderValidator.validate(order, signature);
   }
@@ -171,6 +176,7 @@ abstract contract ExchangeV2Core is
     internal
     view
   {
+    require(isCancelled[order.salt] == 0, "Order has been cancelled");
     LibOrder.validate(order);
     OrderValidator.validate(order, signature);
   }
