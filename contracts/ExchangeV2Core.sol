@@ -119,7 +119,7 @@ abstract contract ExchangeV2Core is
       }
     }
     for(uint i=0; i<orderRight.makeAssets.length; i++) {
-      if (orderLeft.takeAssets[i].assetType.assetClass == LibAsset.ETH_ASSET_CLASS) {
+      if (orderRight.makeAssets[i].assetType.assetClass == LibAsset.ETH_ASSET_CLASS) {
         require(msg.value >= totalTakeValue, "not enough eth");
         if (msg.value > totalTakeValue) {
           address(msg.sender).transferEth(msg.value.sub(totalTakeValue));
@@ -137,14 +137,20 @@ abstract contract ExchangeV2Core is
     internal
     view
   {
+    require(orderLeft.makeAssets.length == orderRight.takeAssets.length, "make and take asset lengths don't match");
+    require(orderRight.makeAssets.length == orderLeft.takeAssets.length, "make and take asset lengths don't match");
+
     for (uint i = 0; i < orderLeft.makeAssets.length; i++) {
-      require(orderLeft.makeAssets[i].value == orderRight.takeAssets[i].value, "asset values don't match");
-      LibAsset.AssetType memory assetMatch = matchAssets(orderLeft.makeAssets[i].assetType,orderRight.takeAssets[i].assetType);
+      require(orderLeft.makeAssets[i].value >= orderRight.takeAssets[i].value, "make value is less than take");
+      LibAsset.AssetType memory assetMatch = matchAssets(
+        orderLeft.makeAssets[i].assetType,
+        orderRight.takeAssets[i].assetType
+      );
       require( assetMatch.assetClass != 0, "assets don't match");
     }
 
-    for (uint i = 0; i < orderLeft.takeAssets.length; i++) {
-      require(orderLeft.takeAssets[i].value == orderRight.makeAssets[i].value, "asset values don't match");
+    for (uint i = 0; i < orderRight.makeAssets.length; i++) {
+      require(orderRight.makeAssets[i].value >= orderLeft.takeAssets[i].value, "make value is less than take");
       LibAsset.AssetType memory assetMatch = matchAssets(
         orderLeft.takeAssets[i].assetType,
         orderRight.makeAssets[i].assetType

@@ -170,6 +170,53 @@ describe("ExchangeV2", function() {
     });
 
     // address1 sends nft to address2
+    it("erc721 for eth - take less than make", async function() {
+
+        TestERC721 = await ethers.getContractFactory("TestERC721");
+        let erc721 = await TestERC721.deploy();
+        await erc721.mint(accounts[1].address, 52);
+        await erc721.connect(accounts[1]).setApprovalForAll(nftproxy.address, true);
+
+        const amount = 10000;
+        let encDataLeft = await encDataV2([
+            [],
+            [], false
+        ]);
+        let encDataRight = await encDataV2([
+            [
+                [accounts[3].address, amount * ROYALTY],
+                [accounts[4].address, amount * PROTOCOL_FEE]
+            ],
+            [], false
+        ]);
+
+
+        let makeAssetLeft = Asset(id("ERC721"), enc(erc721.address, 52), 1);
+        let takeAssetLeft = Asset(id("ETH"), "0x", 5000); // min order would take is 500 but would get 1000
+        let makeAssetRight = Asset(id("ETH"), "0x", 10000);
+        let takeAssetRight = Asset(id("ERC721"), enc(erc721.address, 52), 1);
+        let saltLeft = web3.utils.randomHex(32); // 32 bytes = 256 bits
+        let saltRight = web3.utils.randomHex(32); // 32 bytes = 256 bits
+        const left = Order(accounts[1].address, makeAssetLeft, ZERO, takeAssetLeft, saltLeft, 0, 0, id("V2"), encDataLeft);
+        const right = Order(accounts[2].address, makeAssetRight, ZERO, takeAssetRight, saltRight, 0, 0, id("V2"), encDataRight);
+
+        let signatureLeft = await sign(left, accounts[1].address, exchange.address);
+        let signatureRight = await sign(right, accounts[2].address, exchange.address);
+
+        tc = (await ethers.provider.getTransactionCount(accounts[1].address));
+
+        let balance = (await ethers.provider.getBalance(accounts[1].address));
+        let tx = await exchange.connect(accounts[10]).matchOrders(left, signatureLeft, right, signatureRight, { value: 10000 });
+        let receipt = await tx.wait();
+        tc = (await ethers.provider.getTransactionCount(accounts[1].address));
+
+        let diff = (await ethers.provider.getBalance(accounts[1].address)).toBigInt() - balance.toBigInt();
+        assert.equal(diff, 9100);
+        assert.equal(await erc721.balanceOf(accounts[1].address), 0);
+        assert.equal(await erc721.balanceOf(accounts[2].address), 1);
+    });
+
+    // address1 sends nft to address2
     it("erc721 for erc20 (weth)", async function() {
 
         TestERC721 = await ethers.getContractFactory("TestERC721");

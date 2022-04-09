@@ -49,23 +49,23 @@ abstract contract RaribleTransferManager is
       }
     }
 
-    for(uint i =0; i<leftOrder.takeAssets.length; i++) {
-      LibAsset.AssetType memory takeMatch = leftOrder.takeAssets[i].assetType;
+    for(uint i =0; i<rightOrder.makeAssets.length; i++) {
+      LibAsset.AssetType memory takeMatch = rightOrder.makeAssets[i].assetType;
       if(takeMatch.assetClass == LibAsset.ETH_ASSET_CLASS || takeMatch.assetClass == LibAsset.ERC20_ASSET_CLASS) {
         transferPayoutAndFees(
           takeMatch,
-          leftOrder.takeAssets[i].value,
+          rightOrder.makeAssets[i].value,
           rightOrder.maker,
           leftOrder.maker,
           rightOrderData.payouts,
           TO_MAKER
         );
-        totalTakeValue = leftOrder.takeAssets[i].value;
+        totalTakeValue = rightOrder.makeAssets[i].value;
       }
       else {
         transferPayout(
           takeMatch,
-          leftOrder.takeAssets[i].value,
+          rightOrder.makeAssets[i].value,
           rightOrder.maker,
           leftOrder.maker,
           TO_MAKER
