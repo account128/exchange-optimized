@@ -3,7 +3,6 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
-import "./LibFill.sol";
 import "./LibOrder.sol";
 import "./OrderValidator.sol";
 import "./AssetMatcher.sol";

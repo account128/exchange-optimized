@@ -6,25 +6,31 @@
 const hre = require("hardhat");
 
 async function main() {
-  // Hardhat always runs the compile task when running scripts with its command
-  // line interface.
-  //
-  // If this script is run directly using `node` you may want to call compile
-  // manually to make sure everything is compiled
-  // await hre.run('compile');
+    // Hardhat always runs the compile task when running scripts with its command
+    // line interface.
+    //
+    // If this script is run directly using `node` you may want to call compile
+    // manually to make sure everything is compiled
+    // await hre.run('compile');
 
-  // We get the contract to deploy
-  const Greeter = await hre.ethers.getContractFactory("Greeter");
-  const greeter = await Greeter.deploy("Hello, Hardhat!");
+    // We get the contract to deploy
 
-  await greeter.deployed();
+    const accounts = await ethers.getSigners();
+    console.log("deploying contracts with address", accounts[0].address)
 
-  console.log("Greeter deployed to:", greeter.address);
+    const TransferProxy = await ethers.getContractFactory("TransferProxy");
+    const ERC20TransferProxy = await ethers.getContractFactory("ERC20TransferProxy");
+    let erc20proxy = await TransferProxy.deploy();
+    let nftproxy = await ERC20TransferProxy.deploy();
+
+    const ExchangeV2 = await ethers.getContractFactory("ExchangeV2");
+    let exchange = await ExchangeV2.deploy();
+    await exchange.__ExchangeV2_init(nftproxy.address, erc20proxy.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
 // and properly handle errors.
 main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
+    console.error(error);
+    process.exitCode = 1;
 });

@@ -7,7 +7,6 @@ import "./LibAsset.sol";
 import "./LibOrderDataV2.sol";
 import "./LibOrderDataV1.sol";
 import "./LibPart.sol";
-import "hardhat/console.sol";
 
 library LibOrder {
     using SafeMathUpgradeable for uint;

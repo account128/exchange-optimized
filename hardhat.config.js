@@ -55,8 +55,8 @@ module.exports = {
     },
     networks: {
         rinkeby: {
-            url: process.env.INFURA_URL || "",
-            accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY, process.env.PRIVATE_KEY2] : [],
+            url: process.env.INFURA_URL,
+            accounts: [process.env.PRIVATE_KEY, process.env.PRIVATE_KEY2],
         },
     },
     gasReporter: {
