@@ -308,7 +308,6 @@ describe("ExchangeV2", function() {
             [],
             [], false
         ]);
-        console.log(encDataLeft);
         let encDataRight = await encDataV2([
             [
                 [accounts[3].address, amount * ROYALTY],
@@ -318,7 +317,7 @@ describe("ExchangeV2", function() {
         ]);
 
         let makeAssets = [Asset(id("ERC721"), enc(erc721_1.address, 52), 1), Asset(id("ERC721"), enc(erc721_2.address, 52), 1), Asset(id("ERC721"), enc(erc721_3.address, 52), 1)];
-        let takeAssets = [Asset(id("ERC20"), enc(weth.address), 10000)];
+        let takeAssets = [Asset(id("ERC20"), enc(weth.address), amount)];
         let saltLeft = web3.utils.randomHex(32); // 32 bytes = 256 bits
         let saltRight = web3.utils.randomHex(32); // 32 bytes = 256 bits
         const left = OrderBatch(accounts[1].address, makeAssets, ZERO, takeAssets, saltLeft, 0, 0, id("V2"), encDataLeft);
@@ -336,6 +335,114 @@ describe("ExchangeV2", function() {
         assert.equal(await erc721_2.balanceOf(accounts[2].address), 1);
         assert.equal(await erc721_3.balanceOf(accounts[1].address), 0);
         assert.equal(await erc721_3.balanceOf(accounts[2].address), 1);
+        //assert.equal(await weth.balanceOf(accounts[1].address), 9800);
+        //assert.equal(await weth.balanceOf(accounts[2].address), 0);
+    });
+
+    // Match multiple seperate orders in one transaction
+    it("Match multiple seperate orders in one transaction", async function() {
+
+        TestERC721 = await ethers.getContractFactory("TestERC721");
+        let erc721_1 = await TestERC721.deploy();
+        await erc721_1.mint(accounts[1].address, 52);
+        await erc721_1.connect(accounts[1]).setApprovalForAll(nftproxy.address, true);
+        let erc721_2 = await TestERC721.deploy();
+        await erc721_2.mint(accounts[2].address, 52);
+        await erc721_2.connect(accounts[2]).setApprovalForAll(nftproxy.address, true);
+        let erc721_3 = await TestERC721.deploy();
+        await erc721_3.mint(accounts[3].address, 52);
+        await erc721_3.connect(accounts[3]).setApprovalForAll(nftproxy.address, true);
+
+        const Weth = await ethers.getContractFactory("WETH9")
+        const weth = await Weth.deploy()
+        await weth.connect(accounts[1]).deposit({ value: 20000 });
+        await weth.connect(accounts[1]).approve(erc20proxy.address, UINT256_MAX);
+        await weth.connect(accounts[2]).deposit({ value: 20000 });
+        await weth.connect(accounts[2]).approve(erc20proxy.address, UINT256_MAX);
+        await weth.connect(accounts[3]).deposit({ value: 20000 });
+        await weth.connect(accounts[3]).approve(erc20proxy.address, UINT256_MAX);
+        await weth.connect(accounts[4]).deposit({ value: 100000 });
+        await weth.connect(accounts[4]).approve(erc20proxy.address, UINT256_MAX);
+
+        const amount1 = 10000;
+        let encDataLeft1 = await encDataV2([
+            [],
+            [], false
+        ]);
+        let encDataRight1 = await encDataV2([
+            [
+                [accounts[3].address, amount1 * ROYALTY],
+                [accounts[4].address, amount1 * PROTOCOL_FEE]
+            ],
+            [], false
+        ]);
+
+        let makeAsset1 = Asset(id("ERC721"), enc(erc721_1.address, 52), 1);
+        let takeAsset1 = Asset(id("ERC20"), enc(weth.address), amount1);
+        let saltLeft1 = web3.utils.randomHex(32); // 32 bytes = 256 bits
+        let saltRight1 = web3.utils.randomHex(32); // 32 bytes = 256 bits
+        const left1 = Order(accounts[1].address, makeAsset1, ZERO, takeAsset1, saltLeft1, 0, 0, id("V2"), encDataLeft1);
+        const right1 = Order(accounts[4].address, takeAsset1, ZERO, makeAsset1, saltRight1, 0, 0, id("V2"), encDataRight1);
+
+        let signatureLeft1 = await sign(left1, accounts[1].address, exchange.address);
+        let signatureRight1 = await sign(right1, accounts[4].address, exchange.address);
+
+        const amount2 = 20000;
+        let encDataLeft2 = await encDataV2([
+            [],
+            [], false
+        ]);
+        let encDataRight2 = await encDataV2([
+            [
+                [accounts[3].address, amount2 * ROYALTY],
+                [accounts[4].address, amount2 * PROTOCOL_FEE]
+            ],
+            [], false
+        ]);
+
+        let makeAsset2 = Asset(id("ERC721"), enc(erc721_2.address, 52), 1);
+        let takeAsset2 = Asset(id("ERC20"), enc(weth.address), amount2);
+        let saltLeft2 = web3.utils.randomHex(32); // 32 bytes = 256 bits
+        let saltRight2 = web3.utils.randomHex(32); // 32 bytes = 256 bits
+        const left2 = Order(accounts[2].address, makeAsset2, ZERO, takeAsset2, saltLeft2, 0, 0, id("V2"), encDataLeft2);
+        const right2 = Order(accounts[4].address, takeAsset2, ZERO, makeAsset2, saltRight2, 0, 0, id("V2"), encDataRight2);
+
+        let signatureLeft2 = await sign(left2, accounts[2].address, exchange.address);
+        let signatureRight2 = await sign(right2, accounts[4].address, exchange.address);
+
+        const amount3 = 500;
+        let encDataLeft3 = await encDataV2([
+            [],
+            [], false
+        ]);
+        let encDataRight3 = await encDataV2([
+            [
+                [accounts[3].address, amount3 * ROYALTY],
+                [accounts[4].address, amount3 * PROTOCOL_FEE]
+            ],
+            [], false
+        ]);
+
+        let makeAsset3 = Asset(id("ERC721"), enc(erc721_3.address, 52), 1);
+        let takeAsset3 = Asset(id("ERC20"), enc(weth.address), amount3);
+        let saltLeft3 = web3.utils.randomHex(32); // 32 bytes = 256 bits
+        let saltRight3 = web3.utils.randomHex(32); // 32 bytes = 256 bits
+        const left3 = Order(accounts[3].address, makeAsset3, ZERO, takeAsset3, saltLeft3, 0, 0, id("V2"), encDataLeft3);
+        const right3 = Order(accounts[4].address, takeAsset3, ZERO, makeAsset3, saltRight3, 0, 0, id("V2"), encDataRight3);
+
+        let signatureLeft3 = await sign(left3, accounts[3].address, exchange.address);
+        let signatureRight3 = await sign(right3, accounts[4].address, exchange.address);
+
+        let tx = await exchange.connect(accounts[1]).multiMatchOrders(
+            [left1, left2, left3], [signatureLeft1, signatureLeft2, signatureLeft3], [right1, right2, right3], [signatureRight1, signatureRight2, signatureRight3]
+        );
+        let receipt = await tx.wait();
+        assert.equal(await erc721_1.balanceOf(accounts[1].address), 0);
+        assert.equal(await erc721_1.balanceOf(accounts[4].address), 1);
+        assert.equal(await erc721_2.balanceOf(accounts[2].address), 0);
+        assert.equal(await erc721_2.balanceOf(accounts[4].address), 1);
+        assert.equal(await erc721_3.balanceOf(accounts[3].address), 0);
+        assert.equal(await erc721_3.balanceOf(accounts[4].address), 1);
         //assert.equal(await weth.balanceOf(accounts[1].address), 9800);
         //assert.equal(await weth.balanceOf(accounts[2].address), 0);
     });
@@ -377,9 +484,9 @@ describe("ExchangeV2", function() {
 
         await exchange.connect(accounts[1]).cancel(left);
 
-        // await expect(
-        //     exchange.connect(accounts[1]).matchOrders(left, signatureLeft, right, signatureRight)
-        // ).to.be.revertedWith('Order has been cancelled');
+        await expect(
+            exchange.connect(accounts[1]).matchOrders(left, signatureLeft, right, signatureRight)
+        ).to.be.revertedWith('Order has been cancelled');
 
     });
 
@@ -415,9 +522,9 @@ describe("ExchangeV2", function() {
 
         await exchange.connect(accounts[1]).cancelBatch(left);
 
-        // await expect(
-        //     exchange.connect(accounts[1]).matchOrdersBatch(left, signatureLeft, right, signatureRight)
-        // ).to.be.revertedWith('Order has been cancelled');
+        await expect(
+            exchange.connect(accounts[1]).matchOrdersBatch(left, signatureLeft, right, signatureRight)
+        ).to.be.revertedWith('Order has been cancelled');
 
     });
 });

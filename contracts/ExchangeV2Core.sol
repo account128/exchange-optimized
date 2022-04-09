@@ -51,31 +51,32 @@ abstract contract ExchangeV2Core is
     validateFull(orderLeft, signatureLeft);
     validateFull(orderRight, signatureRight);
 
-    LibAsset.Asset[] memory leftMakeAssets = new LibAsset.Asset[](1);
-    leftMakeAssets[0] = orderLeft.makeAsset;
-    LibAsset.Asset[] memory leftTakeAssets = new LibAsset.Asset[](1);
-    leftTakeAssets[0] = orderLeft.takeAsset;
-    LibOrder.OrderBatch memory orderLeftBatch = LibOrder.OrderBatch(orderLeft.maker, leftMakeAssets, orderLeft.taker, leftTakeAssets, orderLeft.salt, orderLeft.start, orderLeft.end, orderLeft.dataType, orderLeft.data);
-
-    LibAsset.Asset[] memory rightMakeAssets = new LibAsset.Asset[](1);
-    rightMakeAssets[0] = orderRight.makeAsset;
-    LibAsset.Asset[] memory rightTakeAssets = new LibAsset.Asset[](1);
-    rightTakeAssets[0] = orderRight.takeAsset;
-    LibOrder.OrderBatch memory orderRightBatch = LibOrder.OrderBatch(orderRight.maker, rightMakeAssets, orderRight.taker, rightTakeAssets, orderRight.salt, orderRight.start, orderRight.end, orderRight.dataType, orderRight.data);
-
-    if (orderLeftBatch.taker != address(0)) {
-      require(
-        orderRightBatch.maker == orderLeftBatch.taker,
-        "leftOrder.taker verification failed"
-      );
-    }
-    if (orderRightBatch.taker != address(0)) {
-      require(
-        orderRightBatch.taker == orderLeftBatch.maker,
-        "rightOrder.taker verification failed"
-      );
-    }
+    LibOrder.OrderBatch memory orderLeftBatch = LibOrder.convertToBatch(orderLeft);
+    LibOrder.OrderBatch memory orderRightBatch = LibOrder.convertToBatch(orderRight);
+    
     matchAndTransfer(orderLeftBatch, orderRightBatch);
+  }
+
+  function multiMatchOrders(
+    LibOrder.Order[] memory ordersLeft,
+    bytes[] memory signaturesLeft,
+    LibOrder.Order[] memory ordersRight,
+    bytes[] memory signaturesRight
+  ) external payable {
+
+    require(ordersLeft.length == ordersRight.length, "Order lengths don't match");
+    require(signaturesLeft.length == ordersLeft.length, "Signature and order lengths don't match");
+    require(signaturesRight.length == ordersRight.length, "Signature and order lengths don't match");
+    for (uint i=0; i<ordersLeft.length; i++) {
+      validateFull(ordersLeft[i], signaturesLeft[i]);
+      validateFull(ordersRight[i], signaturesRight[i]);
+
+      LibOrder.OrderBatch memory orderLeftBatch = LibOrder.convertToBatch(ordersLeft[i]);
+      LibOrder.OrderBatch memory orderRightBatch = LibOrder.convertToBatch(ordersRight[i]);
+
+      matchAndTransfer(orderLeftBatch, orderRightBatch);
+    }
+
   }
 
   function matchOrdersBatch(
@@ -88,18 +89,6 @@ abstract contract ExchangeV2Core is
     validateFull(orderLeftBatch, signatureLeft);
     validateFull(orderRightBatch, signatureRight);
 
-    if (orderLeftBatch.taker != address(0)) {
-      require(
-        orderRightBatch.maker == orderLeftBatch.taker,
-        "leftOrder.taker verification failed"
-      );
-    }
-    if (orderRightBatch.taker != address(0)) {
-      require(
-        orderRightBatch.taker == orderLeftBatch.maker,
-        "rightOrder.taker verification failed"
-      );
-    }
     matchAndTransfer(orderLeftBatch, orderRightBatch);
   }
 
@@ -108,6 +97,7 @@ abstract contract ExchangeV2Core is
     LibOrder.OrderBatch memory orderRight
   ) internal {
 
+    verifyTakers(orderLeft, orderRight);
     matchAssets(orderLeft, orderRight);
 
     LibOrderDataV2.DataV2 memory leftOrderData = LibOrderData.parse(orderLeft);
@@ -160,6 +150,25 @@ abstract contract ExchangeV2Core is
         orderRight.makeAssets[i].assetType
       );
       require(assetMatch.assetClass != 0, "assets don't match");
+    }
+  }
+
+  function verifyTakers(
+    LibOrder.OrderBatch memory orderLeft,
+    LibOrder.OrderBatch memory orderRight
+  ) internal pure {
+
+    if (orderLeft.taker != address(0)) {
+      require(
+        orderRight.maker == orderLeft.taker,
+        "leftOrder.taker verification failed"
+      );
+    }
+    if (orderRight.taker != address(0)) {
+      require(
+        orderRight.taker == orderLeft.maker,
+        "rightOrder.taker verification failed"
+      );
     }
   }
 
