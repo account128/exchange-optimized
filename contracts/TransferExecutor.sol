@@ -51,6 +51,7 @@ abstract contract TransferExecutor is Initializable, OwnableUpgradeable, ITransf
             require(asset.value == 1, "erc721 value error");
             INftTransferProxy(proxies[LibAsset.ERC721_ASSET_CLASS]).erc721safeTransferFrom(IERC721Upgradeable(token), from, to, tokenId);
         } else if (asset.assetType.assetClass == LibAsset.ERC1155_ASSET_CLASS) {
+            //console.log("transfering erc1155 ..");
             (address token, uint tokenId) = abi.decode(asset.assetType.data, (address, uint256));
             INftTransferProxy(proxies[LibAsset.ERC1155_ASSET_CLASS]).erc1155safeTransferFrom(IERC1155Upgradeable(token), from, to, tokenId, asset.value, "");
         } else {

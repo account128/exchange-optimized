@@ -271,6 +271,45 @@ describe("ExchangeV2", function() {
         //assert.equal(await weth.balanceOf(accounts[2].address), 0);
     });
 
+    // address1 sends 10 erc1155 nft to address2
+    it("erc1155 for eth", async function() {
+
+        TestERC1155 = await ethers.getContractFactory("TestERC1155");
+        let erc1155 = await TestERC1155.deploy();
+        await erc1155.mint(accounts[1].address, 1, 10);
+        await erc1155.connect(accounts[1]).setApprovalForAll(nftproxy.address, true);
+
+        const amount = 10000000;
+        let encDataLeft = await encDataV2([
+            [],
+            [], false
+        ]);
+        let encDataRight = await encDataV2([
+            [
+                [accounts[3].address, amount * ROYALTY],
+                [accounts[4].address, amount * PROTOCOL_FEE]
+            ],
+            [], false
+        ]);
+
+
+        let makeAsset = Asset(id("ERC1155"), enc(erc1155.address, 1), 10);
+        let takeAsset = Asset(id("ETH"), "0x", amount);
+        let saltLeft = web3.utils.randomHex(32); // 32 bytes = 256 bits
+        let saltRight = web3.utils.randomHex(32); // 32 bytes = 256 bits
+        const left = Order(accounts[1].address, makeAsset, ZERO, takeAsset, saltLeft, 0, 0, id("V2"), encDataLeft);
+        const right = Order(accounts[2].address, takeAsset, ZERO, makeAsset, saltRight, 0, 0, id("V2"), encDataRight);
+
+        let signatureLeft = await sign(left, accounts[1].address, exchange.address);
+        let signatureRight = await sign(right, accounts[2].address, exchange.address);
+
+        let tx = await exchange.connect(accounts[1]).matchOrders(left, signatureLeft, right, signatureRight, { value: amount });
+        let receipt = await tx.wait();
+
+        assert.equal(await erc1155.balanceOf(accounts[1].address, 1), 0);
+        assert.equal(await erc1155.balanceOf(accounts[2].address, 1), 10);
+    });
+
     //address1 sends 3 seperate nfts to address2
     it("3 erc721s for eth", async function() {
 
@@ -591,7 +630,53 @@ describe("ExchangeV2", function() {
         await exchange.connect(accounts[1]).cancelBatch(left);
 
         await expect(
-            exchange.connect(accounts[1]).matchOrdersBatch(left, signatureLeft, right, signatureRight)
+            exchange.connect(accounts[1]).matchOrdersBatch(left, signatureLeft, right, signatureRight, { value: amount })
+        ).to.be.revertedWith('Order has been cancelled');
+
+    });
+
+    // try sending double order
+    it("double order", async function() {
+
+        TestERC721 = await ethers.getContractFactory("TestERC721");
+        let erc721 = await TestERC721.deploy();
+        await erc721.mint(accounts[1].address, 52);
+        await erc721.connect(accounts[1]).setApprovalForAll(nftproxy.address, true);
+
+        const Weth = await ethers.getContractFactory("WETH9")
+        const weth = await Weth.deploy()
+        await weth.connect(accounts[2]).deposit({ value: 20000 });
+        await weth.connect(accounts[2]).approve(erc20proxy.address, UINT256_MAX);
+
+        const amount = 10000;
+        let encDataLeft = await encDataV2([
+            [],
+            [], false
+        ]);
+        let encDataRight = await encDataV2([
+            [
+                [accounts[3].address, amount * ROYALTY],
+                [accounts[4].address, amount * PROTOCOL_FEE]
+            ],
+            [], false
+        ]);
+        let makeAsset = Asset(id("ERC721"), enc(erc721.address, 52), 1);
+        let takeAsset = Asset(id("ERC20"), enc(weth.address), amount);
+        let saltLeft = web3.utils.randomHex(32); // 32 bytes = 256 bits
+        let saltRight = web3.utils.randomHex(32); // 32 bytes = 256 bits
+        const left = Order(accounts[1].address, makeAsset, ZERO, takeAsset, saltLeft, 0, 0, id("V2"), encDataLeft);
+        const right = Order(accounts[2].address, takeAsset, ZERO, makeAsset, saltRight, 0, 0, id("V2"), encDataRight);
+
+        let signatureLeft = await sign(left, accounts[1].address, exchange.address);
+        let signatureRight = await sign(right, accounts[2].address, exchange.address);
+
+        exchange.connect(accounts[1]).matchOrders(left, signatureLeft, right, signatureRight)
+
+        // transfer back to address 1
+        await erc721.connect(accounts[2]).transferFrom(accounts[2].address, accounts[1].address, 52);
+
+        await expect(
+            exchange.connect(accounts[1]).matchOrders(left, signatureLeft, right, signatureRight)
         ).to.be.revertedWith('Order has been cancelled');
 
     });
