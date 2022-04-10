@@ -43,6 +43,14 @@ library LibOrder {
         bytes data;
     }
 
+    function hashKey(Order memory order) internal pure returns (bytes32) {
+        return keccak256(abi.encode(order.maker, order.salt));
+    }
+
+    function hashKey(OrderBatch memory order) internal pure returns (bytes32) {
+        return keccak256(abi.encode(order.maker, order.salt));
+    }
+
     function convertToBatch(Order memory order) internal pure returns (OrderBatch memory) {
         LibAsset.Asset[] memory makeAssets = new LibAsset.Asset[](1);
         makeAssets[0] = order.makeAsset;

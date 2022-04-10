@@ -22,7 +22,7 @@ abstract contract ExchangeV2Core is
   using LibTransfer for address;
 
   // state of orders
-  mapping(uint256 => uint256) public isCancelled;
+  mapping(bytes32 => uint256) public fills;
 
   event Cancel();
   event Match();
@@ -30,14 +30,16 @@ abstract contract ExchangeV2Core is
   function cancel(LibOrder.Order memory order) external {
     require(_msgSender() == order.maker, "not a maker");
     require(order.salt != 0, "0 salt can't be used");
-    isCancelled[order.salt] = 1;
+    bytes32 orderKeyHash = LibOrder.hashKey(order);
+    fills[orderKeyHash] = 1;
     emit Cancel();
   }
 
   function cancelBatch(LibOrder.OrderBatch memory order) external {
     require(_msgSender() == order.maker, "not a maker");
     require(order.salt != 0, "0 salt can't be used");
-    isCancelled[order.salt] = 1;
+    bytes32 orderKeyHash = LibOrder.hashKey(order);
+    fills[orderKeyHash] = 1;
     emit Cancel();
   }
 
@@ -181,7 +183,8 @@ abstract contract ExchangeV2Core is
     internal
     view
   {
-    require(isCancelled[order.salt] == 0, "Order has been cancelled");
+    bytes32 orderKeyHash = LibOrder.hashKey(order);
+    require(fills[orderKeyHash] == 0, "Order has been cancelled");
     LibOrder.validate(order);
     OrderValidator.validate(order, signature);
   }
@@ -190,7 +193,8 @@ abstract contract ExchangeV2Core is
     internal
     view
   {
-    require(isCancelled[order.salt] == 0, "Order has been cancelled");
+    bytes32 orderKeyHash = LibOrder.hashKey(order);
+    require(fills[orderKeyHash] == 0, "Order has been cancelled");
     LibOrder.validate(order);
     OrderValidator.validate(order, signature);
   }
