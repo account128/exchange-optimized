@@ -28,13 +28,22 @@ module.exports = {
                 settings: {
                     optimizer: {
                         enabled: true,
-                        runs: 800,
+                        runs: 200,
                     },
                 },
 
             },
             {
-                version: "0.8.2",
+                version: "0.8.2", // for erc721
+                settings: {
+                    optimizer: {
+                        enabled: true,
+                        runs: 200,
+                    },
+                },
+            },
+            {
+                version: "0.4.19", // for weth
                 settings: {
                     optimizer: {
                         enabled: true,
@@ -46,8 +55,8 @@ module.exports = {
     },
     networks: {
         rinkeby: {
-            url: process.env.INFURA_URL || "",
-            accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY, process.env.PRIVATE_KEY2] : [],
+            url: process.env.INFURA_URL,
+            accounts: [process.env.PRIVATE_KEY, process.env.PRIVATE_KEY2],
         },
     },
     gasReporter: {
@@ -62,3 +71,4 @@ module.exports = {
 
 require("hardhat-gas-reporter");
 require("@nomiclabs/hardhat-web3");
+require("@nomiclabs/hardhat-etherscan");

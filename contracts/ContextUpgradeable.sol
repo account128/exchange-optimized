@@ -3,8 +3,6 @@
 pragma solidity >=0.6.0 <0.8.0;
 import "./Initializable.sol";
 
-import "hardhat/console.sol";
-
 /*
  * @dev Provides information about the current execution context, including the
  * sender of the transaction and its data. While these are generally available
@@ -21,7 +19,6 @@ abstract contract ContextUpgradeable is Initializable {
     }
 
     function __Context_init_unchained() internal initializer {
-        console.log("I'm in context init unchained");
     }
     function _msgSender() internal view virtual returns (address payable) {
         return msg.sender;

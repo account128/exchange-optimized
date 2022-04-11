@@ -3,7 +3,6 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
-import "./LibFill.sol";
 import "./LibOrder.sol";
 import "./OrderValidator.sol";
 import "./AssetMatcher.sol";
@@ -24,38 +23,26 @@ abstract contract ExchangeV2Core is
 
   uint256 private constant UINT256_MAX = 2**256 - 1;
 
-  //state of the orders
+  // state of orders
   mapping(bytes32 => uint256) public fills;
 
-  //events
-  event Cancel(
-    bytes32 hash,
-    address maker,
-    LibAsset.AssetType makeAssetType,
-    LibAsset.AssetType takeAssetType
-  );
-  event Match(
-    bytes32 leftHash,
-    bytes32 rightHash,
-    address leftMaker,
-    address rightMaker,
-    uint256 newLeftFill,
-    uint256 newRightFill,
-    LibAsset.AssetType leftAsset,
-    LibAsset.AssetType rightAsset
-  );
+  event Cancel();
+  event Match();
 
   function cancel(LibOrder.Order memory order) external {
     require(_msgSender() == order.maker, "not a maker");
     require(order.salt != 0, "0 salt can't be used");
     bytes32 orderKeyHash = LibOrder.hashKey(order);
     fills[orderKeyHash] = UINT256_MAX;
-    emit Cancel(
-      orderKeyHash,
-      order.maker,
-      order.makeAsset.assetType,
-      order.takeAsset.assetType
-    );
+    emit Cancel();
+  }
+
+  function cancelBatch(LibOrder.OrderBatch memory order) external {
+    require(_msgSender() == order.maker, "not a maker");
+    require(order.salt != 0, "0 salt can't be used");
+    bytes32 orderKeyHash = LibOrder.hashKey(order);
+    fills[orderKeyHash] = UINT256_MAX;
+    emit Cancel();
   }
 
   function matchOrders(
@@ -66,6 +53,120 @@ abstract contract ExchangeV2Core is
   ) external payable {
     validateFull(orderLeft, signatureLeft);
     validateFull(orderRight, signatureRight);
+
+    LibOrder.OrderBatch memory orderLeftBatch = LibOrder.convertToBatch(orderLeft);
+    LibOrder.OrderBatch memory orderRightBatch = LibOrder.convertToBatch(orderRight);
+    
+    matchAndTransfer(orderLeftBatch, orderRightBatch);
+  }
+
+  function multiMatchOrders(
+    LibOrder.Order[] memory ordersLeft,
+    bytes[] memory signaturesLeft,
+    LibOrder.Order[] memory ordersRight,
+    bytes[] memory signaturesRight
+  ) external payable {
+
+    require(ordersLeft.length == ordersRight.length, "Order lengths don't match");
+    require(signaturesLeft.length == ordersLeft.length, "Signature and order lengths don't match");
+    require(signaturesRight.length == ordersRight.length, "Signature and order lengths don't match");
+    for (uint i=0; i<ordersLeft.length; i++) {
+      validateFull(ordersLeft[i], signaturesLeft[i]);
+      validateFull(ordersRight[i], signaturesRight[i]);
+
+      LibOrder.OrderBatch memory orderLeftBatch = LibOrder.convertToBatch(ordersLeft[i]);
+      LibOrder.OrderBatch memory orderRightBatch = LibOrder.convertToBatch(ordersRight[i]);
+
+      matchAndTransfer(orderLeftBatch, orderRightBatch);
+    }
+
+  }
+
+  function matchOrdersBatch(
+    LibOrder.OrderBatch memory orderLeftBatch,
+    bytes memory signatureLeft,
+    LibOrder.OrderBatch memory orderRightBatch,
+    bytes memory signatureRight
+  ) external payable {
+
+    validateFull(orderLeftBatch, signatureLeft);
+    validateFull(orderRightBatch, signatureRight);
+
+    matchAndTransfer(orderLeftBatch, orderRightBatch);
+  }
+
+  function matchAndTransfer(
+    LibOrder.OrderBatch memory orderLeft,
+    LibOrder.OrderBatch memory orderRight
+  ) internal {
+
+    verifyTakers(orderLeft, orderRight);
+    matchAssets(orderLeft, orderRight);
+
+    LibOrderDataV2.DataV2 memory leftOrderData = LibOrderData.parse(orderLeft);
+    LibOrderDataV2.DataV2 memory rightOrderData = LibOrderData.parse(orderRight);
+
+    (uint256 totalMakeValue, uint256 totalTakeValue) = doTransfers(
+      orderLeft,
+      orderRight,
+      leftOrderData,
+      rightOrderData
+    );
+
+    for(uint i=0; i<orderLeft.makeAssets.length; i++) {
+      if (orderLeft.makeAssets[i].assetType.assetClass == LibAsset.ETH_ASSET_CLASS) {
+        require(msg.value >= totalMakeValue, "not enough eth");
+        if (msg.value > totalMakeValue) {
+          address(msg.sender).transferEth(msg.value.sub(totalMakeValue));
+        }
+      }
+    }
+    for(uint i=0; i<orderRight.makeAssets.length; i++) {
+      if (orderRight.makeAssets[i].assetType.assetClass == LibAsset.ETH_ASSET_CLASS) {
+        require(msg.value >= totalTakeValue, "not enough eth");
+        if (msg.value > totalTakeValue) {
+          address(msg.sender).transferEth(msg.value.sub(totalTakeValue));
+        }
+      }
+    }
+    emit Match();
+  }
+
+  // ensure that order types are matched
+  function matchAssets(
+    LibOrder.OrderBatch memory orderLeft,
+    LibOrder.OrderBatch memory orderRight
+  )
+    internal
+    view
+  {
+    require(orderLeft.makeAssets.length == orderRight.takeAssets.length, "make and take asset lengths don't match");
+    require(orderRight.makeAssets.length == orderLeft.takeAssets.length, "make and take asset lengths don't match");
+
+    for (uint i = 0; i < orderLeft.makeAssets.length; i++) {
+      require(orderLeft.makeAssets[i].value >= orderRight.takeAssets[i].value, "make value is less than take");
+      LibAsset.AssetType memory assetMatch = matchAssets(
+        orderLeft.makeAssets[i].assetType,
+        orderRight.takeAssets[i].assetType
+      );
+      require( assetMatch.assetClass != 0, "assets don't match");
+    }
+
+    for (uint i = 0; i < orderRight.makeAssets.length; i++) {
+      require(orderRight.makeAssets[i].value >= orderLeft.takeAssets[i].value, "make value is less than take");
+      LibAsset.AssetType memory assetMatch = matchAssets(
+        orderLeft.takeAssets[i].assetType,
+        orderRight.makeAssets[i].assetType
+      );
+      require(assetMatch.assetClass != 0, "assets don't match");
+    }
+  }
+
+  function verifyTakers(
+    LibOrder.OrderBatch memory orderLeft,
+    LibOrder.OrderBatch memory orderRight
+  ) internal pure {
+
     if (orderLeft.taker != address(0)) {
       require(
         orderRight.maker == orderLeft.taker,
@@ -78,147 +179,30 @@ abstract contract ExchangeV2Core is
         "rightOrder.taker verification failed"
       );
     }
-    matchAndTransfer(orderLeft, orderRight);
-  }
-
-  function matchAndTransfer(
-    LibOrder.Order memory orderLeft,
-    LibOrder.Order memory orderRight
-  ) internal {
-    (
-      LibAsset.AssetType memory makeMatch,
-      LibAsset.AssetType memory takeMatch
-    ) = matchAssets(orderLeft, orderRight);
-    bytes32 leftOrderKeyHash = LibOrder.hashKey(orderLeft);
-    bytes32 rightOrderKeyHash = LibOrder.hashKey(orderRight);
-
-    LibOrderDataV2.DataV2 memory leftOrderData = LibOrderData.parse(orderLeft);
-    LibOrderDataV2.DataV2 memory rightOrderData = LibOrderData.parse(
-      orderRight
-    );
-
-    LibFill.FillResult memory newFill = getFillSetNew(
-      orderLeft,
-      orderRight,
-      leftOrderKeyHash,
-      rightOrderKeyHash,
-      leftOrderData,
-      rightOrderData
-    );
-
-    (uint256 totalMakeValue, uint256 totalTakeValue) = doTransfers(
-      makeMatch,
-      takeMatch,
-      newFill,
-      orderLeft,
-      orderRight,
-      leftOrderData,
-      rightOrderData
-    );
-    if (makeMatch.assetClass == LibAsset.ETH_ASSET_CLASS) {
-      require(takeMatch.assetClass != LibAsset.ETH_ASSET_CLASS);
-      require(msg.value >= totalMakeValue, "not enough eth");
-      if (msg.value > totalMakeValue) {
-        address(msg.sender).transferEth(msg.value.sub(totalMakeValue));
-      }
-    } else if (takeMatch.assetClass == LibAsset.ETH_ASSET_CLASS) {
-      require(msg.value >= totalTakeValue, "not enough eth");
-      if (msg.value > totalTakeValue) {
-        address(msg.sender).transferEth(msg.value.sub(totalTakeValue));
-      }
-    }
-    emit Match(
-      leftOrderKeyHash,
-      rightOrderKeyHash,
-      orderLeft.maker,
-      orderRight.maker,
-      newFill.rightValue,
-      newFill.leftValue,
-      makeMatch,
-      takeMatch
-    );
-  }
-
-  function getFillSetNew(
-    LibOrder.Order memory orderLeft,
-    LibOrder.Order memory orderRight,
-    bytes32 leftOrderKeyHash,
-    bytes32 rightOrderKeyHash,
-    LibOrderDataV2.DataV2 memory leftOrderData,
-    LibOrderDataV2.DataV2 memory rightOrderData
-  ) internal returns (LibFill.FillResult memory) {
-    uint256 leftOrderFill = getOrderFill(orderLeft, leftOrderKeyHash);
-    uint256 rightOrderFill = getOrderFill(orderRight, rightOrderKeyHash);
-    LibFill.FillResult memory newFill = LibFill.fillOrder(
-      orderLeft,
-      orderRight,
-      leftOrderFill,
-      rightOrderFill,
-      leftOrderData.isMakeFill,
-      rightOrderData.isMakeFill
-    );
-
-    require(newFill.rightValue > 0 && newFill.leftValue > 0, "nothing to fill");
-
-    if (orderLeft.salt != 0) {
-      if (leftOrderData.isMakeFill) {
-        fills[leftOrderKeyHash] = leftOrderFill.add(newFill.leftValue);
-      } else {
-        fills[leftOrderKeyHash] = leftOrderFill.add(newFill.rightValue);
-      }
-    }
-
-    if (orderRight.salt != 0) {
-      if (rightOrderData.isMakeFill) {
-        fills[rightOrderKeyHash] = rightOrderFill.add(newFill.rightValue);
-      } else {
-        fills[rightOrderKeyHash] = rightOrderFill.add(newFill.leftValue);
-      }
-    }
-    return newFill;
-  }
-
-  function getOrderFill(LibOrder.Order memory order, bytes32 hash)
-    internal
-    view
-    returns (uint256 fill)
-  {
-    if (order.salt == 0) {
-      fill = 0;
-    } else {
-      fill = fills[hash];
-    }
-  }
-
-  function matchAssets(
-    LibOrder.Order memory orderLeft,
-    LibOrder.Order memory orderRight
-  )
-    internal
-    view
-    returns (
-      LibAsset.AssetType memory makeMatch,
-      LibAsset.AssetType memory takeMatch
-    )
-  {
-    makeMatch = matchAssets(
-      orderLeft.makeAsset.assetType,
-      orderRight.takeAsset.assetType
-    );
-    require(makeMatch.assetClass != 0, "assets don't match");
-    takeMatch = matchAssets(
-      orderLeft.takeAsset.assetType,
-      orderRight.makeAsset.assetType
-    );
-    require(takeMatch.assetClass != 0, "assets don't match");
   }
 
   function validateFull(LibOrder.Order memory order, bytes memory signature)
     internal
     view
   {
+    if(order.salt != 0) {
+      bytes32 orderKeyHash = LibOrder.hashKey(order);
+      require(fills[orderKeyHash] == 0, "Order has been cancelled");
+    }
     LibOrder.validate(order);
-    validate(order, signature);
+    OrderValidator.validate(order, signature);
+  }
+
+  function validateFull(LibOrder.OrderBatch memory order, bytes memory signature)
+    internal
+    view
+  {
+    if(order.salt != 0) {
+      bytes32 orderKeyHash = LibOrder.hashKey(order);
+      require(fills[orderKeyHash] == 0, "Order has been cancelled");
+    }
+    LibOrder.validate(order);
+    OrderValidator.validate(order, signature);
   }
 
   uint256[49] private __gap;
