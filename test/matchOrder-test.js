@@ -154,7 +154,7 @@ describe("ExchangeV2", function() {
 
         let makeAsset = Asset(id("ERC721"), enc(erc721.address, 52), 1);
         let takeAsset = Asset(id("ETH"), "0x", amount);
-        let saltLeft = web3.utils.randomHex(32); // 32 bytes = 256 bits
+        let saltLeft = 0; //web3.utils.randomHex(32); // 32 bytes = 256 bits
         let saltRight = web3.utils.randomHex(32); // 32 bytes = 256 bits
         const left = Order(accounts[1].address, makeAsset, ZERO, takeAsset, saltLeft, 0, 0, id("V2"), encDataLeft);
         const right = Order(accounts[2].address, takeAsset, ZERO, makeAsset, saltRight, 0, 0, id("V2"), encDataRight);
@@ -255,7 +255,7 @@ describe("ExchangeV2", function() {
         let makeAsset = Asset(id("ERC721"), enc(erc721.address, 52), 1);
         let takeAsset = Asset(id("ERC20"), enc(weth.address), amount);
         let saltLeft = web3.utils.randomHex(32); // 32 bytes = 256 bits
-        let saltRight = web3.utils.randomHex(32); // 32 bytes = 256 bits
+        let saltRight = 0 //web3.utils.randomHex(32); // 32 bytes = 256 bits
         const left = Order(accounts[1].address, makeAsset, ZERO, takeAsset, saltLeft, 0, 0, id("V2"), encDataLeft);
         const right = Order(accounts[2].address, takeAsset, ZERO, makeAsset, saltRight, 0, 0, id("V2"), encDataRight);
 
@@ -263,7 +263,7 @@ describe("ExchangeV2", function() {
         let signatureLeft = await sign(left, accounts[1].address, exchange.address);
         let signatureRight = await sign(right, accounts[2].address, exchange.address);
 
-        let tx = await exchange.connect(accounts[1]).matchOrders(left, signatureLeft, right, signatureRight);
+        let tx = await exchange.connect(accounts[2]).matchOrders(left, signatureLeft, right, signatureRight);
         let receipt = await tx.wait();
         assert.equal(await erc721.balanceOf(accounts[1].address), 0);
         assert.equal(await erc721.balanceOf(accounts[2].address), 1);
@@ -295,7 +295,7 @@ describe("ExchangeV2", function() {
 
         let makeAsset = Asset(id("ERC1155"), enc(erc1155.address, 1), 10);
         let takeAsset = Asset(id("ETH"), "0x", amount);
-        let saltLeft = web3.utils.randomHex(32); // 32 bytes = 256 bits
+        let saltLeft = 0; //web3.utils.randomHex(32); // 32 bytes = 256 bits
         let saltRight = web3.utils.randomHex(32); // 32 bytes = 256 bits
         const left = Order(accounts[1].address, makeAsset, ZERO, takeAsset, saltLeft, 0, 0, id("V2"), encDataLeft);
         const right = Order(accounts[2].address, takeAsset, ZERO, makeAsset, saltRight, 0, 0, id("V2"), encDataRight);
@@ -338,7 +338,7 @@ describe("ExchangeV2", function() {
         ]);
         let makeAssets = [Asset(id("ERC721"), enc(erc721_1.address, 52), 1), Asset(id("ERC721"), enc(erc721_2.address, 52), 1), Asset(id("ERC721"), enc(erc721_3.address, 52), 1)];
         let takeAssets = [Asset(id("ETH"), "0x", amount)];
-        let saltLeft = web3.utils.randomHex(32); // 32 bytes = 256 bits
+        let saltLeft = 0; //web3.utils.randomHex(32); // 32 bytes = 256 bits
         let saltRight = web3.utils.randomHex(32); // 32 bytes = 256 bits
         const left = OrderBatch(accounts[1].address, makeAssets, ZERO, takeAssets, saltLeft, 0, 0, id("V2"), encDataLeft);
         const right = OrderBatch(accounts[2].address, takeAssets, ZERO, makeAssets, saltRight, 0, 0, id("V2"), encDataRight);
@@ -404,7 +404,7 @@ describe("ExchangeV2", function() {
 
         let makeAssets = [Asset(id("ERC721"), enc(erc721_1.address, 52), 1), Asset(id("ERC721"), enc(erc721_2.address, 52), 1), Asset(id("ERC721"), enc(erc721_3.address, 52), 1)];
         let takeAssets = [Asset(id("ERC20"), enc(weth.address), amount)];
-        let saltLeft = web3.utils.randomHex(32); // 32 bytes = 256 bits
+        let saltLeft = 0; //web3.utils.randomHex(32); // 32 bytes = 256 bits
         let saltRight = web3.utils.randomHex(32); // 32 bytes = 256 bits
         const left = OrderBatch(accounts[1].address, makeAssets, ZERO, takeAssets, saltLeft, 0, 0, id("V2"), encDataLeft);
         const right = OrderBatch(accounts[2].address, takeAssets, ZERO, makeAssets, saltRight, 0, 0, id("V2"), encDataRight);
@@ -472,7 +472,7 @@ describe("ExchangeV2", function() {
             ]);
             let makeAsset = Asset(id("ERC721"), enc(tokens[i].address, 52), 1);
             let takeAsset = Asset(id("ERC20"), enc(weth.address), amount);
-            let saltLeft = web3.utils.randomHex(32); // 32 bytes = 256 bits
+            let saltLeft = 0; //web3.utils.randomHex(32); // 32 bytes = 256 bits
             let saltRight = web3.utils.randomHex(32); // 32 bytes = 256 bits
             leftOrders[i] = Order(accounts[1].address, makeAsset, ZERO, takeAsset, saltLeft, 0, 0, id("V2"), encDataLeft);
             rightOrders[i] = Order(accounts[2].address, takeAsset, ZERO, makeAsset, saltRight, 0, 0, id("V2"), encDataRight);
@@ -535,7 +535,7 @@ describe("ExchangeV2", function() {
             ]);
             let makeAsset = Asset(id("ERC721"), enc(erc721.address, i + 1), 1);
             let takeAsset = Asset(id("ERC20"), enc(weth.address), amount);
-            let saltLeft = web3.utils.randomHex(32); // 32 bytes = 256 bits
+            let saltLeft = 0; //web3.utils.randomHex(32); // 32 bytes = 256 bits
             let saltRight = web3.utils.randomHex(32); // 32 bytes = 256 bits
             leftOrders[i] = Order(accounts[1].address, makeAsset, ZERO, takeAsset, saltLeft, 0, 0, id("V2"), encDataLeft);
             rightOrders[i] = Order(accounts[2].address, takeAsset, ZERO, makeAsset, saltRight, 0, 0, id("V2"), encDataRight);
@@ -581,7 +581,7 @@ describe("ExchangeV2", function() {
         ]);
         let makeAsset = Asset(id("ERC721"), enc(erc721.address, 52), 1);
         let takeAsset = Asset(id("ERC20"), enc(weth.address), amount);
-        let saltLeft = web3.utils.randomHex(32); // 32 bytes = 256 bits
+        let saltLeft = 0; //web3.utils.randomHex(32); // 32 bytes = 256 bits
         let saltRight = web3.utils.randomHex(32); // 32 bytes = 256 bits
         const left = Order(accounts[1].address, makeAsset, ZERO, takeAsset, saltLeft, 0, 0, id("V2"), encDataLeft);
         const right = Order(accounts[2].address, takeAsset, ZERO, makeAsset, saltRight, 0, 0, id("V2"), encDataRight);
@@ -589,7 +589,7 @@ describe("ExchangeV2", function() {
         let signatureLeft = await sign(left, accounts[1].address, exchange.address);
         let signatureRight = await sign(right, accounts[2].address, exchange.address);
 
-        await exchange.connect(accounts[1]).cancel(left);
+        await exchange.connect(accounts[2]).cancel(right);
 
         await expect(
             exchange.connect(accounts[1]).matchOrders(left, signatureLeft, right, signatureRight)
@@ -619,7 +619,7 @@ describe("ExchangeV2", function() {
         ]);
         let makeAssets = [Asset(id("ERC721"), enc(erc721.address, 52), 1)];
         let takeAssets = [Asset(id("ETH"), "0x", amount)];
-        let saltLeft = web3.utils.randomHex(32); // 32 bytes = 256 bits
+        let saltLeft = 0; //web3.utils.randomHex(32); // 32 bytes = 256 bits
         let saltRight = web3.utils.randomHex(32); // 32 bytes = 256 bits
         const left = OrderBatch(accounts[1].address, makeAssets, ZERO, takeAssets, saltLeft, 0, 0, id("V2"), encDataLeft);
         const right = OrderBatch(accounts[2].address, takeAssets, ZERO, makeAssets, saltRight, 0, 0, id("V2"), encDataRight);
@@ -627,7 +627,7 @@ describe("ExchangeV2", function() {
         let signatureLeft = await signBatch(left, accounts[1].address, exchange.address);
         let signatureRight = await signBatch(right, accounts[2].address, exchange.address);
 
-        await exchange.connect(accounts[1]).cancelBatch(left);
+        await exchange.connect(accounts[2]).cancelBatch(right);
 
         await expect(
             exchange.connect(accounts[1]).matchOrdersBatch(left, signatureLeft, right, signatureRight, { value: amount })
@@ -662,7 +662,7 @@ describe("ExchangeV2", function() {
     //     ]);
     //     let makeAsset = Asset(id("ERC721"), enc(erc721.address, 52), 1);
     //     let takeAsset = Asset(id("ERC20"), enc(weth.address), amount);
-    //     let saltLeft = web3.utils.randomHex(32); // 32 bytes = 256 bits
+    //     let saltLeft = 0;//web3.utils.randomHex(32); // 32 bytes = 256 bits
     //     let saltRight = web3.utils.randomHex(32); // 32 bytes = 256 bits
     //     const left = Order(accounts[1].address, makeAsset, ZERO, takeAsset, saltLeft, 0, 0, id("V2"), encDataLeft);
     //     const right = Order(accounts[2].address, takeAsset, ZERO, makeAsset, saltRight, 0, 0, id("V2"), encDataRight);

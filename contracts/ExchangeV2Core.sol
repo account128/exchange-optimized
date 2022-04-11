@@ -185,8 +185,10 @@ abstract contract ExchangeV2Core is
     internal
     view
   {
-    bytes32 orderKeyHash = LibOrder.hashKey(order);
-    require(fills[orderKeyHash] == 0, "Order has been cancelled");
+    if(order.salt != 0) {
+      bytes32 orderKeyHash = LibOrder.hashKey(order);
+      require(fills[orderKeyHash] == 0, "Order has been cancelled");
+    }
     LibOrder.validate(order);
     OrderValidator.validate(order, signature);
   }
@@ -195,8 +197,10 @@ abstract contract ExchangeV2Core is
     internal
     view
   {
-    bytes32 orderKeyHash = LibOrder.hashKey(order);
-    require(fills[orderKeyHash] == 0, "Order has been cancelled");
+    if(order.salt != 0) {
+      bytes32 orderKeyHash = LibOrder.hashKey(order);
+      require(fills[orderKeyHash] == 0, "Order has been cancelled");
+    }
     LibOrder.validate(order);
     OrderValidator.validate(order, signature);
   }
