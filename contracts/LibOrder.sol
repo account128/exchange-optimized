@@ -43,10 +43,29 @@ library LibOrder {
         bytes data;
     }
 
+    // keep same hashkey for Order
     function hashKey(Order memory order) internal pure returns (bytes32) {
-        return keccak256(abi.encode(order.maker, order.salt));
+        //order.data is in hash for V2 orders
+        if (order.dataType == LibOrderDataV2.V2){
+            return keccak256(abi.encode(
+                order.maker,
+                LibAsset.hash(order.makeAsset.assetType),
+                LibAsset.hash(order.takeAsset.assetType),
+                order.salt,
+                order.data
+            ));
+        } else {
+            return keccak256(abi.encode(
+                order.maker,
+                LibAsset.hash(order.makeAsset.assetType),
+                LibAsset.hash(order.takeAsset.assetType),
+                order.salt
+            ));
+        }
+        
     }
 
+    // use simplified hash key for OrderBatch
     function hashKey(OrderBatch memory order) internal pure returns (bytes32) {
         return keccak256(abi.encode(order.maker, order.salt));
     }

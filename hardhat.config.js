@@ -71,3 +71,4 @@ module.exports = {
 
 require("hardhat-gas-reporter");
 require("@nomiclabs/hardhat-web3");
+require("@nomiclabs/hardhat-etherscan");

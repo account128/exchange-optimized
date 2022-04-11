@@ -21,6 +21,8 @@ abstract contract ExchangeV2Core is
   using SafeMathUpgradeable for uint256;
   using LibTransfer for address;
 
+  uint256 private constant UINT256_MAX = 2**256 - 1;
+
   // state of orders
   mapping(bytes32 => uint256) public fills;
 
@@ -31,7 +33,7 @@ abstract contract ExchangeV2Core is
     require(_msgSender() == order.maker, "not a maker");
     require(order.salt != 0, "0 salt can't be used");
     bytes32 orderKeyHash = LibOrder.hashKey(order);
-    fills[orderKeyHash] = 1;
+    fills[orderKeyHash] = UINT256_MAX;
     emit Cancel();
   }
 
@@ -39,7 +41,7 @@ abstract contract ExchangeV2Core is
     require(_msgSender() == order.maker, "not a maker");
     require(order.salt != 0, "0 salt can't be used");
     bytes32 orderKeyHash = LibOrder.hashKey(order);
-    fills[orderKeyHash] = 1;
+    fills[orderKeyHash] = UINT256_MAX;
     emit Cancel();
   }
 
